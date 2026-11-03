@@ -1,0 +1,20 @@
+[build]
+  publish = "public"      # o Netlify publica só esta pasta (scripts e workflow não vão ao ar)
+  # sem comando de build: é um site estático
+
+[[headers]]
+  for = "/dados.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"   # sempre pega a versão nova após o deploy
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/meta.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

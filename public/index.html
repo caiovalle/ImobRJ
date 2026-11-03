@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImobRJ · Quanto vale o m² no Rio?</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
+  colors: { brand: { 50:'#fff1ef', 100:'#ffe0dc', 500:'#ef4b3f', 600:'#d93a2f', 900:'#7a1d17' }, ink:'#1c2433' }
+}}}
+</script>
+<style>
+  body { background:#f7f5f2 }
+  .card { background:#fff; border:1px solid #ece8e3; border-radius:1.25rem; padding:1.25rem; box-shadow:0 1px 2px rgba(28,36,51,.04) }
+  .chart-box { position:relative; height:300px }
+  .tab-btn { padding:.5rem 1rem; border-radius:9999px; font-weight:600; font-size:.875rem; color:#4b5563; white-space:nowrap }
+  .tab-btn:hover { background:#f1ede8 }
+  .tab-btn.active { background:#1c2433; color:#fff }
+  .pill { padding:.4rem .95rem; border-radius:9999px; font-size:.85rem; font-weight:600; border:1px solid #e2ddd6; background:#fff; color:#4b5563 }
+  .pill.on { background:#1c2433; color:#fff; border-color:#1c2433 }
+  .sel { border:1px solid #e2ddd6; border-radius:.75rem; padding:.45rem .7rem; background:#fff; font-size:.85rem; font-weight:500 }
+  .hero-sel { border-radius:.75rem; padding:.55rem .8rem; background:rgba(255,255,255,.95); color:#1c2433; font-size:.875rem; font-weight:500; min-width:12rem; max-width:100% }
+  input, select { outline:none } input:focus, select:focus { box-shadow:0 0 0 3px rgba(239,75,63,.3) }
+  .sug.act { background:#fff1ef }
+</style>
+</head>
+<body class="font-sans text-ink min-h-screen">
+
+<!-- NAV -->
+<header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-[#ece8e3]">
+  <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
+    <a href="#" class="flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
+    <nav class="flex gap-1 overflow-x-auto ml-2">
+      <button data-tab="overview" class="tab-btn active">Visão geral</button>
+      <button data-tab="compare" class="tab-btn">Comparador</button>
+      <button data-tab="trend" class="tab-btn">Tendência</button>
+      <button data-tab="history" class="tab-btn">Histórico</button>
+    </nav>
+    <button id="btnCidade" class="ml-auto text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap hidden sm:block"><i class="fa-solid fa-city mr-1"></i>Cidade toda</button>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 pb-16">
+  <!-- HERO / BUSCA -->
+  <section class="relative z-30 mt-6 rounded-3xl p-6 sm:p-10 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
+    <p class="text-sm font-semibold opacity-90 mb-2"><i class="fa-solid fa-chart-line mr-1"></i>Dados oficiais de ITBI · Prefeitura do Rio<span id="stamp" class="font-normal opacity-80"></span></p>
+    <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
+    <p class="mt-3 text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
+
+    <div class="relative z-50 mt-6 max-w-3xl">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input id="search" autocomplete="off" placeholder="Digite um CEP, rua ou bairro…"
+               class="w-full pl-12 pr-32 py-4 rounded-full bg-white text-ink text-base shadow-xl">
+        <button id="btnSearch" class="absolute right-2 top-1/2 -translate-y-1/2 bg-ink hover:bg-black text-white font-semibold px-6 py-2.5 rounded-full">Buscar</button>
+      </div>
+      <div id="suggest" class="hidden absolute left-0 right-0 mt-2 bg-white text-ink border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto" style="z-index:9999"></div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2 items-center text-sm">
+      <span class="opacity-80 mr-1">Populares:</span><span id="popular" class="flex flex-wrap gap-2"></span>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-3 items-center text-sm">
+      <span class="opacity-80">ou escolha:</span>
+      <select id="selBairro" class="hero-sel"><option value="">Bairro…</option></select>
+      <select id="selRua" class="hero-sel" disabled><option value="">Rua…</option></select>
+    </div>
+    <div id="chips" class="mt-4 flex flex-wrap gap-2 text-xs"></div>
+  </section>
+
+  <!-- LOCAL + FILTROS -->
+  <section class="relative z-0 mt-8">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h2 id="scopeTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cidade do Rio de Janeiro</h2>
+        <div id="scopeSub" class="text-sm text-gray-500 mt-1"></div>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button class="pill tipo on" data-v="">Todos</button>
+        <button class="pill tipo" data-v="Residencial">Residencial</button>
+        <button class="pill tipo" data-v="Comercial">Comercial</button>
+        <select id="fTipo" class="hidden"><option value=""></option><option>Residencial</option><option>Comercial</option></select>
+      </div>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-3 text-sm">
+      <label class="text-xs text-gray-500">Tipologia<br><select id="fTip" class="sel text-ink"><option value="">Todas</option></select></label>
+      <label class="text-xs text-gray-500">De<br><select id="fDe" class="sel text-ink"></select></label>
+      <label class="text-xs text-gray-500">Até<br><select id="fAte" class="sel text-ink"></select></label>
+      <label class="text-xs text-gray-500">Agrupar<br><select id="fGran" class="sel text-ink"><option value="1">Mensal</option><option value="3">Trimestral</option></select></label>
+    </div>
+
+    <div id="empty" class="hidden card text-center text-gray-500 py-12 mt-6"><i class="fa-solid fa-circle-info text-3xl mb-3"></i><p>Sem transações para esta combinação de local e filtros.</p></div>
+
+    <div class="mt-6 space-y-6">
+      <!-- VISÃO GERAL -->
+      <section id="tab-overview" class="tab space-y-6">
+        <div id="kpis" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="card lg:col-span-2"><h3 class="font-bold mb-3">Preço médio por m² ao longo do tempo</h3><div class="chart-box"><canvas id="cPreco"></canvas></div></div>
+          <div class="card"><h3 class="font-bold mb-3">Tipologias</h3><div class="chart-box"><canvas id="cTip"></canvas></div></div>
+        </div>
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="card lg:col-span-2">
+            <div class="flex justify-between items-center mb-3"><h3 id="rankTitle" class="font-bold">Ranking</h3>
+              <select id="rankMetric" class="sel"><option value="m2">Preço/m²</option><option value="n">Volume</option></select></div>
+            <div class="chart-box"><canvas id="cRank"></canvas></div>
+          </div>
+          <div class="card"><h3 class="font-bold mb-3">Transações por ano</h3><div class="chart-box"><canvas id="cAno"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- COMPARADOR -->
+      <section id="tab-compare" class="tab hidden space-y-6">
+        <div class="card flex flex-wrap items-end gap-4 text-sm">
+          <label class="text-xs text-gray-500">Comparar com outro bairro<br><select id="cmpExtra" class="sel text-ink min-w-[14rem]"></select></label>
+          <label class="text-xs text-gray-500">Escala<br><select id="cmpMode" class="sel text-ink"><option value="abs">R$/m² (absoluto)</option><option value="idx">Base 100 (evolução)</option></select></label>
+        </div>
+        <div id="cmpBanner"></div>
+        <div class="card"><h3 class="font-bold mb-3">Comparador de mercado</h3><div class="chart-box" style="height:380px"><canvas id="cCmp"></canvas></div></div>
+        <div class="card overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>R$/m² (12m)</th><th>Valor médio</th><th>Transações (12m)</th><th>Var. 12m</th><th>vs. Cidade</th></tr></thead><tbody id="cmpTable"></tbody></table></div>
+      </section>
+
+      <!-- TENDÊNCIA -->
+      <section id="tab-trend" class="tab hidden space-y-6">
+        <div id="trendKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div class="card"><h3 class="font-bold mb-1">Tendência e projeção de preço/m²</h3><p class="text-xs text-gray-500 mb-3">Regressão linear sobre os períodos com dados; projeção de 12 meses. É uma extrapolação estatística, não uma previsão garantida.</p><div class="chart-box" style="height:380px"><canvas id="cTrend"></canvas></div></div>
+        <div class="card"><h3 class="font-bold mb-3">Sazonalidade (média de transações por mês)</h3><div class="chart-box" style="height:240px"><canvas id="cSaz"></canvas></div></div>
+      </section>
+
+      <!-- HISTÓRICO -->
+      <section id="tab-history" class="tab hidden">
+        <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Histórico de pesquisas</h3>
+          <button id="btnClear" class="text-sm text-red-600 hover:underline">Limpar tudo</button></div>
+          <ul id="histList" class="divide-y"></ul></div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<!-- Carregamento manual do JSON (caso abra via file://) -->
+<div id="loader" class="fixed inset-0 z-[10000] bg-white flex items-center justify-center">
+  <div class="text-center max-w-md p-6">
+    <i class="fa-solid fa-spinner fa-spin text-3xl text-brand-500 mb-4" id="loadIcon"></i>
+    <p id="loadMsg" class="text-gray-600">Carregando dados…</p>
+    <div id="manual" class="hidden mt-4">
+      <p class="text-sm text-gray-500 mb-3">Não foi possível abrir o <b>dados.json</b> automaticamente (isso acontece ao abrir o HTML direto do disco). Selecione o arquivo ou rode um servidor local (<code>python -m http.server</code>).</p>
+      <input type="file" id="file" accept=".json" class="text-sm">
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
