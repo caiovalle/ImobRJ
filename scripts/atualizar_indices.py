@@ -92,6 +92,9 @@ def main():
         except Exception as e:
             sys.exit(f"ERRO: não consegui baixar {cfg['nome']} do Banco Central ({e}). Mantendo o arquivo atual.")
         dados = converter(chave, cfg, brutos)
+        if hoje.strftime("%Y-%m") in dados:   # o mês em andamento ainda está incompleto (ex.: CDI parcial)
+            dados.pop(hoje.strftime("%Y-%m"))
+            print(f"  (mês em andamento {hoje.strftime('%Y-%m')} descartado: ainda incompleto)")
         ultimo = max(dados)
         print(f"  {len(dados)} meses, de {min(dados)} a {ultimo}")
         resultado[chave] = {"codigo_sgs": cfg["codigo"], "nome": cfg["nome"], "unidade": cfg["unidade"],
