@@ -24,14 +24,27 @@ RAIZ = Path(__file__).resolve().parent.parent
 PUBLIC = RAIZ / "public"
 
 
+# Alguns servidores governamentais filtram clientes "não-navegador"; usamos cabeçalhos de navegador.
+CABECALHOS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://www.data.rio/",
+}
+
+
 def http_json(url, params, tentativas=5):
     q = urllib.parse.urlencode(params)
     for i in range(tentativas):
         try:
-            req = urllib.request.Request(f"{url}?{q}", headers={"User-Agent": "imobrj-atualizador/1.0"})
+            req = urllib.request.Request(f"{url}?{q}", headers=CABECALHOS)
             with urllib.request.urlopen(req, timeout=90) as r:
-                d = json.load(r)
-            if "error" in d:
+                bruto = r.read()
+                status = r.status
+            try:
+                d = json.loads(bruto)
+            except ValueError:
+                raise RuntimeError(f"resposta não é JSON (HTTP {status}): {bruto[:300]!r}")
+            if isinstance(d, dict) and "error" in d:
                 raise RuntimeError(d["error"])
             return d
         except Exception as e:
@@ -42,22 +55,39 @@ def http_json(url, params, tentativas=5):
             time.sleep(espera)
 
 
+def contar(url):
+    """Pergunta o total ao servidor (só informativo: o download não depende disso)."""
+    for where in ("1=1", "objectid>0"):
+        d = http_json(url, {"where": where, "returnCountOnly": "true", "f": "json"})
+        n = d.get("count") if isinstance(d, dict) else None
+        print(f"  contagem (where={where}): {n}  | resposta: {json.dumps(d, ensure_ascii=False)[:200]}")
+        if n:
+            return n, where
+    return 0, "1=1"
+
+
 def baixar(url):
-    total = http_json(url, {"where": "1=1", "returnCountOnly": "true", "f": "json"})["count"]
-    print(f"Data.Rio informa {total:,} registros; baixando…")
+    total, where = contar(url)
+    print(f"Data.Rio informa {total:,} registros; baixando…" if total else
+          "Servidor não informou a contagem; tentando baixar mesmo assim…")
     linhas, offset = [], 0
-    while offset < total:
-        d = http_json(url, {"where": "1=1", "outFields": "*", "returnGeometry": "false",
+    while True:
+        d = http_json(url, {"where": where, "outFields": "*", "returnGeometry": "false",
                             "orderByFields": "objectid", "resultOffset": offset,
                             "resultRecordCount": PAGINA, "f": "json"})
-        feats = d.get("features", [])
+        feats = d.get("features", []) if isinstance(d, dict) else []
         if not feats:
+            if offset == 0:
+                print("  A primeira página veio vazia. Resposta do servidor:", file=sys.stderr)
+                print("  " + json.dumps(d, ensure_ascii=False)[:600], file=sys.stderr)
             break
         linhas += [f["attributes"] for f in feats]
         offset += len(feats)
-        print(f"  {len(linhas):,}/{total:,}", end="\r")
+        print(f"  {len(linhas):,}" + (f"/{total:,}" if total else ""), end="\r")
     print()
-    if len(linhas) < total * 0.99:
+    if not linhas:
+        sys.exit("ERRO: o servidor não devolveu nenhum registro (veja a resposta acima). Mantendo o arquivo atual.")
+    if total and len(linhas) < total * 0.99:
         sys.exit(f"ERRO: baixou {len(linhas):,} de {total:,} registros; abortando para não corromper os dados.")
     return linhas
 
