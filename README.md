@@ -1,15 +1,22 @@
 # ImobRJ — Dashboard de transações imobiliárias do Rio
 
-Dashboard estático (HTML + JS) com dados de ITBI da Prefeitura do Rio. Os dados são atualizados
-automaticamente pelo GitHub Actions e o Netlify republica o site a cada atualização.
+Dashboard estático (HTML + JS) com dados de ITBI da Prefeitura do Rio, comparação com IPCA e CDI
+(Banco Central) e aba de metodologia. O Netlify republica o site a cada `push` no GitHub.
+
+> **Status da atualização automática:** pausada. O servidor da Prefeitura respondeu `count = 0` ao
+> workflow (causa não identificada). Por enquanto os dados são atualizados manualmente
+> (ver "Atualizando os dados"). O workflow pode ser desativado em *Actions → Atualizar dados → ⋯ → Disable workflow*.
 
 ```
 imobrj/
 ├─ public/                      <- site publicado no Netlify
 │  ├─ index.html, app.js
-│  ├─ dados.json                <- gerado automaticamente
-│  └─ meta.json                 <- data da atualização (aparece no topo do site)
+│  ├─ dados.json                <- transações ITBI (gerado por atualizar_dados.py)
+│  ├─ meta.json                 <- data da atualização (aparece no topo do site)
+│  └─ indices.json              <- IPCA e CDI mensais (gerado por atualizar_indices.py)
 ├─ scripts/atualizar_dados.py   <- baixa do Data.Rio e converte (só biblioteca padrão)
+├─ scripts/atualizar_indices.py <- baixa IPCA e CDI do Banco Central (só biblioteca padrão)
+├─ .vscode/settings.json        <- Commit no VS Code já envia ao GitHub
 ├─ .github/workflows/atualizar-dados.yml   <- agenda semanal + botão manual
 └─ netlify.toml
 ```
@@ -36,6 +43,20 @@ Se os dados não mudaram, nada é commitado.
 4. **Primeiro teste**: aba *Actions* → *Atualizar dados do Data.Rio* → *Run workflow*.
    - "Sem mudanças nos dados" = tudo certo, já está atualizado.
    - Se houver dados novos, o robô faz o commit e o Netlify publica em 1–2 minutos.
+
+## Trabalhando pelo VS Code
+1. Clonar o repositório uma vez: `Ctrl+Shift+P` → *Git: Clone* → *Clone from GitHub* → `imobrj`.
+2. Editar e salvar (`Ctrl+S`).
+3. Ícone *Source Control* (barra lateral) → escrever uma mensagem → botão **Commit**. A configuração em
+   `.vscode/settings.json` faz o *push* para o GitHub logo em seguida; o Netlify publica em 1–2 minutos.
+
+## Atualizando os dados
+```bash
+python scripts/atualizar_indices.py               # IPCA e CDI (Banco Central) -> public/indices.json
+python scripts/atualizar_dados.py --csv ITBI.csv  # ITBI a partir de um CSV baixado do Data.Rio
+```
+Depois, *Commit* no VS Code. Se `indices.json` não existir, o site tenta ler o Banco Central direto
+do navegador (não verificado em produção); se também falhar, os recursos de IPCA/CDI ficam desativados.
 
 ## Rodando localmente
 ```bash

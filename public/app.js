@@ -16,7 +16,7 @@ const pretty = s => { const t = s.trim().split(/\s+/); const f = ABREV[strip(t[0
 const $ = id => document.getElementById(id);
 const brl = v => v == null ? '—' : v.toLocaleString('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:0 });
 const num = v => v == null ? '—' : Math.round(v).toLocaleString('pt-BR');
-const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%';
+const pct = v => { if (v == null) return '—'; const t = v.toFixed(1); return (v > 0 && t !== '0.0' ? '+' : '') + (t === '-0.0' ? '0.0' : t).replace('.', ',') + '%'; };
 const pctColor = v => v == null ? 'text-gray-500' : v > 0 ? 'text-emerald-600' : v < 0 ? 'text-red-600' : 'text-gray-500';
 const COLORS = ['#ef4b3f', '#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#94a3b8'];
 
@@ -73,6 +73,7 @@ function start(raw) {
   const pop = [...BAIRROS].sort((a, b) => b.n - a.n).slice(0, 6);
   $('popular').innerHTML = pop.map(b => `<button class="pop bg-white/20 hover:bg-white/30 rounded-full px-3 py-1 font-semibold" data-nb="${b.nb}">${b.nome}</button>`).join('');
   bindEvents(); renderChips(); render();
+  loadIndices().finally(() => { renderMethodAuto(); if (TAB !== 'history') render(); });
 }
 
 // ---------- Filtros / agregações ----------
@@ -105,6 +106,49 @@ function regress(ys) {          // regressão linear simples sobre pontos não n
 }
 function movAvg(ys, w = 3) { return ys.map((_, i) => { const s = ys.slice(Math.max(0, i - w + 1), i + 1).filter(v => v != null); return s.length ? s.reduce((a, b) => a + b, 0) / s.length : null; }); }
 
+// ---------- Índices oficiais (IPCA e CDI) ----------
+// Fonte: Banco Central do Brasil (SGS) — IPCA = série 433 (IBGE), CDI acumulado no mês = série 4391 (B3).
+// Lidos de indices.json (gerado por scripts/atualizar_indices.py); se o arquivo não existir, tenta a API do BCB direto do navegador.
+let IDX = null;   // { ipca: Map(t → % a.m.), cdi: Map(...), fim: {ipca, cdi}, gerado_em, origem }
+const SGS = { ipca: 433, cdi: 4391 };
+const tOf = ym => { const [a, m] = ym.split('-'); return (+a - 2018) * 12 + +m - 1; };
+const ymLabel = t => `${MESES[t % 12]}/${2018 + Math.floor(t / 12)}`;
+function parseIdx(j, origem) {
+  const o = { gerado_em: j.gerado_em, origem, fim: {} };
+  for (const nome of ['ipca', 'cdi']) {
+    const m = new Map(Object.entries(j.series[nome].dados).map(([ym, v]) => [tOf(ym), +v]));
+    if (m.size < 24) throw new Error('série curta: ' + nome);
+    o[nome] = m; o.fim[nome] = Math.max(...m.keys());
+  }
+  return o;
+}
+async function loadIndices() {
+  try {
+    const r = await fetch('indices.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error(r.status);
+    IDX = parseIdx(await r.json(), 'arquivo'); return;
+  } catch (e) { /* tenta direto no BCB */ }
+  try {
+    const h = new Date(), fim = `${String(h.getDate()).padStart(2, '0')}/${String(h.getMonth() + 1).padStart(2, '0')}/${h.getFullYear()}`;
+    const j = { gerado_em: h.toISOString().slice(0, 10), series: {} };
+    for (const [nome, cod] of Object.entries(SGS)) {
+      const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cod}/dados?formato=json&dataInicial=01/01/2018&dataFinal=${fim}`);
+      if (!r.ok) throw new Error(r.status);
+      const dados = {}; (await r.json()).forEach(x => { const [, m, a] = x.data.split('/'); dados[`${a}-${m}`] = parseFloat(String(x.valor).replace(',', '.')); });
+      j.series[nome] = { dados };
+    }
+    IDX = parseIdx(j, 'bcb');
+  } catch (e) { IDX = null; }
+}
+// fator acumulado entre o mês t0 e o mês t1 (multiplica os meses t0+1 … t1); null se faltar algum mês
+function fator(nome, t0, t1) {
+  const m = IDX?.[nome]; if (!m || t1 < t0) return null;
+  let f = 1; for (let t = t0 + 1; t <= t1; t++) { const r = m.get(t); if (r == null) return null; f *= 1 + r / 100; }
+  return f;
+}
+const ganho = (a, b) => a == null || b == null ? null : ((1 + a / 100) / b - 1) * 100;   // (1+nominal)/fator − 1, em %
+const fatorPct = f => f == null ? null : (f - 1) * 100;
+
 // ---------- Gráficos ----------
 function mk(id, cfg) {
   if (!window.Chart) { if (!mk.warned) { mk.warned = true; toast('Chart.js não carregou (verifique a internet).'); } return; }
@@ -119,10 +163,13 @@ function render() {
   B = baseRows();
   const sc = inScope(B);
   const has = sc.length > 0;
-  $('empty').classList.toggle('hidden', has);
-  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && TAB !== 'history')));
+  const solo = TAB === 'history' || TAB === 'method';   // abas que não dependem de local/filtros
+  $('empty').classList.toggle('hidden', has || solo);
+  $('scopeHead').classList.toggle('hidden', TAB === 'method'); $('filtersBar').classList.toggle('hidden', TAB === 'method');
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && !solo)));
   $('scopeTitle').textContent = S.label;
   if (TAB === 'history') return renderHistory();
+  if (TAB === 'method') return renderMethodAuto();
   if (!has) return;
   $('scopeSub').innerHTML = `${num(sc.length)} registros · ${F.de}–${F.ate}` + (S.cep ? ` · <span class="text-brand-600 font-medium">CEP ${S.cep}</span>` : '') + (S.ceps?.length ? ' · CEPs: ' + S.ceps.map(c => `<span class="bg-brand-100 text-brand-900 rounded px-1.5 py-0.5 text-xs">${c}</span>`).join(' ') : '');
   ({ overview: renderOverview, compare: renderCompare, trend: renderTrend })[TAB](sc);
@@ -133,7 +180,8 @@ function renderOverview(sc) {
   const k = (icon, label, val, cls = '') => `<div class="card"><div class="text-xs text-gray-500 mb-1"><i class="fa-solid ${icon} mr-1"></i>${label}</div><div class="text-xl font-bold ${cls}">${val}</div></div>`;
   $('kpis').innerHTML = k('fa-handshake', 'Transações', num(a.n)) + k('fa-ruler-combined', 'Preço médio/m²', brl(a.m2)) +
     k('fa-sack-dollar', 'Valor médio', brl(a.valor)) + k('fa-vector-square', 'Área média', a.area.toFixed(0) + ' m²') +
-    k('fa-arrow-trend-up', 'Variação 12m (R$/m²)', pct(v), pctColor(v));
+    k('fa-arrow-trend-up', 'Variação 12m (R$/m²)', pct(v), pctColor(v)) +
+    (IDX ? (() => { const r = ganho(v, fator('ipca', lastT - 17, lastT - 5)); return k('fa-scale-balanced', 'Variação real 12m (descont. IPCA)', pct(r), pctColor(r)); })() : '');
 
   const axis = makeAxis(B), s = series(sc, axis);
   mk('cPreco', { type: 'line', data: { labels: axis.map(keyLabel), datasets: [lineDs('R$/m²', s.map(p => p?.m2 ?? null), COLORS[0], { fill: true, backgroundColor: 'rgba(239,75,63,.10)' })] },
@@ -162,19 +210,39 @@ function renderRank() {
 }
 
 function renderCompare(sc) {
-  const lastT = Math.max(...B.map(r => r.t)), axis = makeAxis(B), mode = $('cmpMode').value;
+  const lastT = Math.max(...B.map(r => r.t)), axis = makeAxis(B);
+  const useIpca = !!IDX && $('cmpIpca').checked, useCdi = !!IDX && $('cmpCdi').checked;
+  $('cmpMode').querySelector('option[value="real"]').disabled = !IDX;
+  let mode = $('cmpMode').value; if (mode === 'real' && !IDX) mode = 'abs';
+  if (useIpca || useCdi) mode = 'idx';                       // IPCA/CDI só fazem sentido em base 100
+  $('idxNote').textContent = IDX
+    ? `Índices oficiais (Banco Central/SGS): IPCA (IBGE) até ${ymLabel(IDX.fim.ipca)}; CDI (B3) até ${ymLabel(IDX.fim.cdi)}. Veja detalhes em “Dados e metodologia”.`
+    : 'Índices IPCA/CDI indisponíveis. Rode scripts/atualizar_indices.py para gerar public/indices.json (instruções no README).';
+  $('cmpIpca').disabled = $('cmpCdi').disabled = !IDX;
+
   const bairroNome = nb => BAIRROS.find(b => b.nb === nb)?.nome;
   const mercados = [{ nome: 'Cidade do RJ', rows: B, cor: '#94a3b8' }];
   if (S.lvl !== 'cidade') mercados.push({ nome: 'Bairro ' + bairroNome(S.nb), rows: inScope(B, { lvl: 'bairro', nb: S.nb }), cor: COLORS[1] });
   if (S.lvl === 'rua') mercados.push({ nome: S.label, rows: sc, cor: COLORS[0] });
   const ex = $('cmpExtra').value; if (ex && !(S.lvl !== 'cidade' && S.nb === ex)) mercados.push({ nome: 'Bairro ' + bairroNome(ex), rows: inScope(B, { lvl: 'bairro', nb: ex }), cor: COLORS[2] });
 
+  const tk = k => F.gran === 3 ? 3 * k + 1 : k;                // mês representativo de cada período do eixo
+  const tRef = IDX ? Math.min(lastT, IDX.fim.ipca) : null;     // mês de referência dos "valores de hoje"
   const ds = mercados.map(m => {
     let y = series(m.rows, axis).map(p => p?.m2 ?? null);
     if (mode === 'idx') { const base = y.find(v => v != null); y = y.map(v => v == null ? null : v / base * 100); }
+    if (mode === 'real') y = y.map((v, i) => { const f = v == null ? null : fator('ipca', tk(axis[i]), tRef); return f == null ? null : v * f; });
     return lineDs(m.nome, y, m.cor, { borderWidth: m.nome === S.label || m.nome.startsWith('Bairro') ? 2.5 : 2 });
   });
-  mk('cCmp', { type: 'line', data: { labels: axis.map(keyLabel), datasets: ds }, options: { interaction: { mode: 'index', intersect: false }, scales: { y: mode === 'abs' ? yBRL : { title: { display: true, text: 'Base 100 = 1º período' } } } } });
+  if (useIpca || useCdi) {                                     // referências ancoradas no 1º período do local em foco
+    const foco = series(S.lvl === 'cidade' ? B : sc, axis).map(p => p?.m2 ?? null), k0 = foco.findIndex(v => v != null), t0 = tk(axis[k0]);
+    const ref = (nome, rot, cor) => lineDs(rot, axis.map((k, i) => { if (i < k0) return null; const f = fator(nome, t0, tk(k)); return f == null ? null : f * 100; }), cor, { borderDash: [6, 4], borderWidth: 2.2 });
+    if (useIpca) ds.push(ref('ipca', 'IPCA (inflação)', '#111827'));
+    if (useCdi) ds.push(ref('cdi', 'CDI', '#d97706'));
+  }
+  const ytxt = mode === 'idx' ? 'Base 100 = 1º período' + (useIpca || useCdi ? ' do local em foco' : '') : mode === 'real' ? `R$/m² em valores de ${ymLabel(tRef)} (IPCA)` : null;
+  mk('cCmp', { type: 'line', data: { labels: axis.map(keyLabel), datasets: ds }, options: { interaction: { mode: 'index', intersect: false },
+    scales: { y: mode === 'idx' ? { title: { display: true, text: ytxt } } : { ...yBRL, title: ytxt ? { display: true, text: ytxt } : undefined } } } });
 
   const cid = agg(B.filter(r => r.t > lastT - 12));
   $('cmpTable').innerHTML = mercados.map(m => {
@@ -182,12 +250,40 @@ function renderCompare(sc) {
     return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td>
       <td>${brl(a12?.m2)}</td><td>${brl(a12?.valor)}</td><td>${num(a12?.n)}</td><td class="${pctColor(v)}">${pct(v)}</td><td class="${pctColor(d)}">${m.nome === 'Cidade do RJ' ? '—' : pct(d)}</td></tr>`;
   }).join('');
+  renderIdxTables(mercados, lastT);
 
   const foco = S.lvl === 'cidade' ? null : agg(sc.filter(r => r.t > lastT - 12));
   const d = foco && cid ? (foco.m2 / cid.m2 - 1) * 100 : null;
   $('cmpBanner').innerHTML = d == null ? '' : `<div class="card flex items-center gap-3 ${d > 0 ? 'border-amber-300 bg-amber-50' : 'border-emerald-300 bg-emerald-50'}">
     <i class="fa-solid ${d > 0 ? 'fa-arrow-up' : 'fa-arrow-down'} text-xl"></i>
     <p><b>${S.label}</b> está <b>${Math.abs(d).toFixed(1).replace('.', ',')}% ${d > 0 ? 'acima' : 'abaixo'}</b> da média da cidade nos últimos 12 meses (${brl(foco.m2)}/m² vs ${brl(cid.m2)}/m²).</p></div>`;
+}
+
+// Tabelas "imóvel × IPCA × CDI": 12 meses e período completo. Janelas de 12 meses → índices alinhados ao ponto médio de cada janela.
+function renderIdxTables(mercados, lastT) {
+  const box = $('idxCards'); if (!IDX) { box.innerHTML = ''; return; }
+  const cel = (v, cor = true) => `<td class="${cor ? pctColor(v) : ''}">${pct(v)}</td>`;
+  const tabela = (titulo, sub, linhas) => `<div class="card overflow-x-auto"><h3 class="font-bold">${titulo}</h3><p class="text-xs text-gray-500 mb-3">${sub}</p>
+    <table class="w-full text-sm min-w-[640px]"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>Imóvel (nominal)</th><th>IPCA</th><th>CDI</th><th>Imóvel real (acima do IPCA)</th><th>Imóvel vs CDI</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+  const linha = (m, nom, ip, cd) => { const ipP = fatorPct(ip), cdP = fatorPct(cd);
+    return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td>
+      ${cel(nom)}${cel(ipP, false)}${cel(cdP, false)}${cel(ganho(nom, ip))}${cel(ganho(nom, cd))}</tr>`; };
+
+  const ip12 = fator('ipca', lastT - 17, lastT - 5), cd12 = fator('cdi', lastT - 17, lastT - 5);
+  const t12 = mercados.map(m => linha(m, var12(m.rows, lastT), ip12, cd12)).join('');
+
+  const tp = mercados.map(m => {
+    const ts = m.rows.map(r => r.t), t0 = Math.min(...ts), t1 = Math.max(...ts);
+    if (t1 - t0 < 35) return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td><td colspan="5" class="text-gray-400">Menos de 36 meses de dados: sem comparação confiável</td></tr>`;
+    const a0 = agg(m.rows.filter(r => r.t <= t0 + 11)), a1 = agg(m.rows.filter(r => r.t >= t1 - 11));
+    const nom = (a1.m2 / a0.m2 - 1) * 100;
+    return linha({ ...m, nome: `${m.nome} <span class="text-xs font-normal text-gray-400">(${ymLabel(t0)}–${ymLabel(t1)})</span>` }, nom, fator('ipca', t0 + 6, t1 - 5), fator('cdi', t0 + 6, t1 - 5));
+  }).join('');
+
+  const aviso = 'Referências oficiais: IPCA (IBGE) e CDI (B3), via Banco Central. O CDI é bruto (antes de Imposto de Renda); o imóvel tem custos (ITBI, corretagem, IPTU, condomínio) e pode render aluguel, que não entram aqui. O R$/m² médio mistura imóveis diferentes a cada mês, então não é a valorização de um imóvel específico. Não é recomendação de investimento.';
+  box.innerHTML = tabela('Últimos 12 meses', 'Média dos últimos 12 meses contra a dos 12 anteriores (mesma base da coluna “Var. 12m”).', t12) +
+    tabela('Período completo', 'Média dos primeiros 12 meses de dados contra a dos últimos 12 meses, em cada mercado (exige ao menos 36 meses).', tp) +
+    `<p class="text-xs text-gray-500 px-1">${aviso}</p>`;
 }
 
 function renderTrend(sc) {
@@ -339,6 +435,8 @@ function bindEvents() {
   bind('fTipo', v => F.tipo = v); bind('fTip', v => F.tip = v); bind('fDe', v => F.de = +v); bind('fAte', v => F.ate = +v);
   bind('fGran', v => F.gran = +v); bind('cmpExtra', () => {}); bind('cmpMode', () => {});
   $('rankMetric').onchange = renderRank;
+  $('cmpIpca').addEventListener('change', () => { if ($('cmpIpca').checked) $('cmpMode').value = 'idx'; render(); });
+  $('cmpCdi').addEventListener('change', () => { if ($('cmpCdi').checked) $('cmpMode').value = 'idx'; render(); });
   $('selBairro').onchange = e => { const b = BAIRROS.find(x => x.nb === e.target.value); b ? selecionar({ lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }) : $('btnCidade').click(); };
   $('selRua').onchange = e => { const r = RUAS.find(x => x.nb === S.nb && x.nl === e.target.value);
     r ? selecionar({ lvl: 'rua', nb: r.nb, nl: r.nl, label: `${r.nome} · ${r.bairro}` }) : selecionar({ lvl: 'bairro', nb: S.nb, label: 'Bairro ' + BAIRROS.find(x => x.nb === S.nb).nome }); };
@@ -357,6 +455,15 @@ function bindEvents() {
   });
   $('btnClear').onclick = () => { setHist([]); renderChips(); renderHistory(); };
 }
+function renderMethodAuto() {
+  const el = id => $(id); if (!el('mItbi')) return;
+  if (ROWS.length) { const ts = ROWS.map(r => r.t), a = Math.min(...ts), b = Math.max(...ts);
+    el('mItbi').textContent = `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
+  for (const n of ['ipca', 'cdi']) el('m' + n[0].toUpperCase() + n.slice(1)).textContent = IDX
+    ? `Neste painel: ${ymLabel(Math.min(...IDX[n].keys()))} a ${ymLabel(IDX.fim[n])}` + (IDX.origem === 'bcb' ? ' (lido direto do BCB neste acesso)' : `, baixado em ${IDX.gerado_em.split('-').reverse().join('/')}`) + '.'
+    : 'Ainda não carregado (rode scripts/atualizar_indices.py).';
+}
+
 function syncFilters() { paintPills(); $('fTipo').value = F.tipo; $('fTip').value = F.tip; $('fDe').value = F.de; $('fAte').value = F.ate; $('fGran').value = F.gran; }
 
 init();

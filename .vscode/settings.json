@@ -1,0 +1,13 @@
+{
+  // Ao clicar em "Commit" no VS Code, envia (push) para o GitHub automaticamente.
+  "git.postCommitCommand": "push",
+  // Se nada estiver "preparado" (staged), o Commit inclui todas as alterações.
+  "git.enableSmartCommit": true,
+  "git.suggestSmartCommit": false,
+  // Não pergunta antes de sincronizar.
+  "git.confirmSync": false,
+  // Busca novidades do GitHub em segundo plano.
+  "git.autofetch": true,
+  // Evita que o terminal do VS Code abra com caracteres quebrados.
+  "files.encoding": "utf8"
+}

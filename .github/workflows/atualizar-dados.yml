@@ -2,11 +2,11 @@ name: Atualizar dados do Data.Rio
 
 on:
   schedule:
-    - cron: "0 9 * * 1"
-  workflow_dispatch:
+    - cron: "0 9 * * 1"      # toda segunda-feira, 09:00 UTC (06:00 em Brasília)
+  workflow_dispatch:          # permite rodar manualmente na aba Actions
 
 permissions:
-  contents: write
+  contents: write             # necessário para commitar o dados.json
 
 concurrency:
   group: atualizar-dados

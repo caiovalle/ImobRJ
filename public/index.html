@@ -40,6 +40,7 @@ tailwind.config = { theme: { extend: {
       <button data-tab="compare" class="tab-btn">Comparador</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
       <button data-tab="history" class="tab-btn">Histórico</button>
+      <button data-tab="method" class="tab-btn">Dados e metodologia</button>
     </nav>
     <button id="btnCidade" class="ml-auto text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap hidden sm:block"><i class="fa-solid fa-city mr-1"></i>Cidade toda</button>
   </div>
@@ -75,7 +76,7 @@ tailwind.config = { theme: { extend: {
 
   <!-- LOCAL + FILTROS -->
   <section class="relative z-0 mt-8">
-    <div class="flex flex-wrap items-end justify-between gap-4">
+    <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h2 id="scopeTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cidade do Rio de Janeiro</h2>
         <div id="scopeSub" class="text-sm text-gray-500 mt-1"></div>
@@ -87,7 +88,7 @@ tailwind.config = { theme: { extend: {
         <select id="fTipo" class="hidden"><option value=""></option><option>Residencial</option><option>Comercial</option></select>
       </div>
     </div>
-    <div class="mt-4 flex flex-wrap gap-3 text-sm">
+    <div id="filtersBar" class="mt-4 flex flex-wrap gap-3 text-sm">
       <label class="text-xs text-gray-500">Tipologia<br><select id="fTip" class="sel text-ink"><option value="">Todas</option></select></label>
       <label class="text-xs text-gray-500">De<br><select id="fDe" class="sel text-ink"></select></label>
       <label class="text-xs text-gray-500">Até<br><select id="fAte" class="sel text-ink"></select></label>
@@ -99,7 +100,7 @@ tailwind.config = { theme: { extend: {
     <div class="mt-6 space-y-6">
       <!-- VISÃO GERAL -->
       <section id="tab-overview" class="tab space-y-6">
-        <div id="kpis" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
+        <div id="kpis" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"></div>
         <div class="grid lg:grid-cols-3 gap-6">
           <div class="card lg:col-span-2"><h3 class="font-bold mb-3">Preço médio por m² ao longo do tempo</h3><div class="chart-box"><canvas id="cPreco"></canvas></div></div>
           <div class="card"><h3 class="font-bold mb-3">Tipologias</h3><div class="chart-box"><canvas id="cTip"></canvas></div></div>
@@ -118,11 +119,18 @@ tailwind.config = { theme: { extend: {
       <section id="tab-compare" class="tab hidden space-y-6">
         <div class="card flex flex-wrap items-end gap-4 text-sm">
           <label class="text-xs text-gray-500">Comparar com outro bairro<br><select id="cmpExtra" class="sel text-ink min-w-[14rem]"></select></label>
-          <label class="text-xs text-gray-500">Escala<br><select id="cmpMode" class="sel text-ink"><option value="abs">R$/m² (absoluto)</option><option value="idx">Base 100 (evolução)</option></select></label>
+          <label class="text-xs text-gray-500">Escala<br><select id="cmpMode" class="sel text-ink"><option value="abs">R$/m² (absoluto)</option><option value="idx">Base 100 (evolução)</option><option value="real">R$/m² em valores de hoje (IPCA)</option></select></label>
+          <div class="text-xs text-gray-500">Comparar com<br>
+            <span class="flex gap-4 mt-1.5 text-sm text-ink">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpIpca" class="accent-[#ef4b3f]"> IPCA (inflação)</label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpCdi" class="accent-[#ef4b3f]"> CDI</label>
+            </span></div>
+          <p id="idxNote" class="w-full text-xs text-gray-500"></p>
         </div>
         <div id="cmpBanner"></div>
         <div class="card"><h3 class="font-bold mb-3">Comparador de mercado</h3><div class="chart-box" style="height:380px"><canvas id="cCmp"></canvas></div></div>
         <div class="card overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>R$/m² (12m)</th><th>Valor médio</th><th>Transações (12m)</th><th>Var. 12m</th><th>vs. Cidade</th></tr></thead><tbody id="cmpTable"></tbody></table></div>
+        <div id="idxCards" class="space-y-6"></div>
       </section>
 
       <!-- TENDÊNCIA -->
@@ -137,6 +145,89 @@ tailwind.config = { theme: { extend: {
         <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Histórico de pesquisas</h3>
           <button id="btnClear" class="text-sm text-red-600 hover:underline">Limpar tudo</button></div>
           <ul id="histList" class="divide-y"></ul></div>
+      </section>
+
+      <!-- DADOS E METODOLOGIA -->
+      <section id="tab-method" class="tab hidden space-y-6">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Dados e metodologia</h2>
+          <p class="text-gray-600 mt-2 max-w-3xl">De onde vêm os números, como são tratados e o que eles <b>não</b> dizem. A qualidade deste painel depende da transparência sobre isso.</p>
+        </div>
+
+        <div class="card"><h3 class="font-bold mb-3">Três tipos de informação (nunca misturados)</h3>
+          <ul class="text-sm space-y-2 text-gray-700">
+            <li><b>Transações registradas:</b> dados de ITBI da Prefeitura. É a base de todos os preços exibidos.</li>
+            <li><b>Preços anunciados:</b> <u>não</u> são usados. Anúncios de portais não aparecem neste painel.</li>
+            <li><b>Estimativas do sistema:</b> tendência, projeção e comparações com IPCA/CDI. São sempre cálculos nossos sobre os dados acima e vêm identificados como tal.</li>
+          </ul>
+        </div>
+
+        <div class="card overflow-x-auto"><h3 class="font-bold mb-3">Fontes</h3>
+          <table class="w-full text-sm min-w-[720px]">
+            <thead class="text-left text-gray-500 border-b"><tr><th class="py-2 pr-4">Fonte</th><th class="pr-4">Instituição</th><th class="pr-4">Uso no painel</th><th>Acesso e cobertura</th></tr></thead>
+            <tbody class="align-top divide-y">
+              <tr><td class="py-3 pr-4 font-medium">ITBI – Transações por logradouro e mês (residenciais e não residenciais)</td>
+                <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda, publicado no portal Data.Rio</td>
+                <td class="pr-4">Preços, áreas, volume de transações, tipologias</td>
+                <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/datasets/5e4dda4d33f44b1eb9246559b281d1b8_8/about" target="_blank" rel="noopener">Página do dataset</a>. Município do Rio de Janeiro. Base desde 2010; o painel usa de 2018 em diante. Formato: serviço ArcGIS REST / CSV. <span id="mItbi" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">IPCA – variação mensal (série SGS 433)</td>
+                <td class="pr-4">IBGE (índice); Banco Central do Brasil (divulgação via SGS)</td>
+                <td class="pr-4">Inflação oficial, para comparar e deflacionar preços</td>
+                <td><a class="text-brand-600 hover:underline" href="https://dadosabertos.bcb.gov.br/" target="_blank" rel="noopener">dadosabertos.bcb.gov.br</a> · API <code class="text-xs">api.bcb.gov.br</code>. Mensal, nacional. <span id="mIpca" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">CDI – acumulado no mês (série SGS 4391)</td>
+                <td class="pr-4">B3 (taxa); Banco Central do Brasil (divulgação via SGS)</td>
+                <td class="pr-4">Referência de rendimento de renda fixa</td>
+                <td>Mesma API do Banco Central. Mensal. <span id="mCdi" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">ViaCEP</td>
+                <td class="pr-4">Serviço gratuito de terceiros (<u>não é fonte oficial</u>)</td>
+                <td class="pr-4">Só a busca por CEP: converte o CEP em rua e bairro</td>
+                <td><a class="text-brand-600 hover:underline" href="https://viacep.com.br" target="_blank" rel="noopener">viacep.com.br</a>. Não entra em nenhum cálculo de preço.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card"><h3 class="font-bold mb-3">Como os dados do ITBI são tratados</h3>
+            <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
+              <li><b>Cada registro é uma média</b>: o dataset traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
+              <li>Mantemos só a transação principal <b>“Compra e venda”</b> e anos a partir de 2018.</li>
+              <li>Descartamos registros sem área ou valor, e com R$/m² fora de <b>R$ 500 a R$ 200.000</b>, para eliminar erros de digitação. O limite superior é uma estimativa nossa: os dados só provam que o erro está entre R$ 142 mil e R$ 379 mil/m².</li>
+              <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. Textos são padronizados (maiúsculas/minúsculas); logradouros abreviados da fonte são expandidos só para a busca.</li>
+              <li>Usamos o campo <i>Média_Valor_Imóvel</i>. A camada também traz <i>Média_Valor_Transação</i>; a diferença exata entre os dois ainda precisa ser confirmada no dicionário do dataset antes de afirmarmos o que o valor representa.</li>
+            </ul>
+          </div>
+          <div class="card"><h3 class="font-bold mb-3">Como calculamos</h3>
+            <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
+              <li><b>Preço/m² e valor médio:</b> médias <b>ponderadas pelo número de transações</b> de cada registro.</li>
+              <li><b>Variação 12m:</b> média dos últimos 12 meses contra a média dos 12 meses anteriores (nominal, em R$).</li>
+              <li><b>Tendência e projeção:</b> regressão linear simples sobre os períodos com dados. É extrapolação estatística, não previsão. O R² mede só o ajuste da reta.</li>
+              <li><b>Comparação com IPCA e CDI:</b> o preço/m² vira índice base 100 no primeiro período; IPCA e CDI são acumulados mês a mês (produto de 1 + taxa) a partir do mesmo ponto. Nas janelas de 12 meses, os índices são alinhados ao ponto médio de cada janela.</li>
+              <li><b>Variação real:</b> (1 + variação nominal) ÷ (1 + IPCA no mesmo intervalo) − 1.</li>
+              <li><b>Valores de hoje:</b> cada preço mensal é multiplicado pelo IPCA acumulado entre aquele mês e o último mês com IPCA disponível.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card"><h3 class="font-bold mb-3">Limitações importantes</h3>
+          <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
+            <li><b>Média não é mediana.</b> Como a fonte já vem agregada, não conseguimos calcular mediana, percentis ou dispersão das transações individuais. Uma rua com poucas vendas pode ter média distorcida por um imóvel atípico.</li>
+            <li><b>Não é um índice de preços puro.</b> O R$/m² médio de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
+            <li><b>Preço de ITBI não é necessariamente o preço efetivamente pago, nem o valor atual de mercado.</b> Há defasagem de publicação: a tabela omite o mês mais recente.</li>
+            <li><b>O volume varia muito entre regiões.</b> Ruas e bairros com poucas transações geram séries instáveis; veja sempre o número de transações.</li>
+            <li><b>Comparação com o CDI é simplificada.</b> O CDI é bruto (antes de Imposto de Renda); o imóvel tem custos (ITBI, corretagem, IPTU, condomínio) e pode gerar aluguel, que não entram na conta. Desempenho passado não garante resultado futuro.</li>
+            <li>Nada aqui substitui uma <b>avaliação profissional</b> nem é recomendação de investimento.</li>
+          </ul>
+        </div>
+
+        <div class="card"><h3 class="font-bold mb-3">Estratégia e próximos passos</h3>
+          <ol class="text-sm space-y-3 text-gray-700">
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Fase 1 – MVP:</b> indicadores, filtros por bairro e rua, evolução de preços, comparador, tendência e comparação com IPCA/CDI.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 mr-2">A investigar</span><b>Fase 2 – Mapa:</b> a base tem logradouro e bairro, mas não coordenadas. Falta definir como geolocalizar (limites oficiais de bairros ou geocodificação de ruas) e se os termos de uso permitem.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 mr-2">A investigar</span><b>Fase 3 – Estimativa de valor:</b> com dados agregados por rua e mês, só seria possível uma referência por <i>região e tipologia</i>, sem quartos, vagas ou conservação. Avaliar outras bases públicas (ITBI de outros municípios, Registro de Imóveis) antes de prometer essa função.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-gray-200 text-gray-700 mr-2">Depois</span><b>Fase 4 – Inteligência:</b> liquidez, valorização por região, relatórios exportáveis.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-gray-200 text-gray-700 mr-2">Qualidade</span><b>Em paralelo:</b> checar duplicidades, padronizar bairros, confirmar o dicionário do ITBI e validar o limite superior de R$/m².</li>
+          </ol>
+        </div>
       </section>
     </div>
   </section>
