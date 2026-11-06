@@ -43,6 +43,7 @@ tailwind.config = { theme: { extend: {
       <button data-tab="compare" class="tab-btn">Comparador</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
       <button data-tab="tx" class="tab-btn">Transações</button>
+      <button data-tab="anuncios" class="tab-btn">Anúncios</button>
       <button data-tab="calc" class="tab-btn">Comprar ou alugar</button>
       <button data-tab="history" class="tab-btn">Histórico</button>
       <button data-tab="method" class="tab-btn">Dados e metodologia</button>
@@ -157,6 +158,7 @@ tailwind.config = { theme: { extend: {
       </section>
 
       <!-- HISTÓRICO -->
+      <section id="tab-anuncios" class="tab hidden space-y-6"></section>
       <section id="tab-calc" class="tab hidden space-y-6"></section>
       <section id="tab-history" class="tab hidden">
         <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Histórico de pesquisas</h3>
@@ -304,9 +306,10 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=calc12"></script>
-<script src="calc.js?v=calc12"></script>
+<script src="app.js?v=an1"></script>
+<script src="calc.js?v=an1"></script>
 <script src="transacoes.js"></script>
+<script src="anuncios.js?v=an1"></script>
 <script src="combo.js"></script>
 </body>
 </html>
