@@ -43,6 +43,7 @@ tailwind.config = { theme: { extend: {
       <button data-tab="compare" class="tab-btn">Comparador</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
       <button data-tab="tx" class="tab-btn">Transações</button>
+      <button data-tab="calc" class="tab-btn">Comprar ou alugar</button>
       <button data-tab="history" class="tab-btn">Histórico</button>
       <button data-tab="method" class="tab-btn">Dados e metodologia</button>
     </nav>
@@ -145,6 +146,7 @@ tailwind.config = { theme: { extend: {
       </section>
 
       <!-- HISTÓRICO -->
+      <section id="tab-calc" class="tab hidden space-y-6"></section>
       <section id="tab-history" class="tab hidden">
         <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Histórico de pesquisas</h3>
           <button id="btnClear" class="text-sm text-red-600 hover:underline">Limpar tudo</button></div>
@@ -204,10 +206,10 @@ tailwind.config = { theme: { extend: {
           <table class="w-full text-sm min-w-[720px]">
             <thead class="text-left text-gray-500 border-b"><tr><th class="py-2 pr-4">Fonte</th><th class="pr-4">Instituição</th><th class="pr-4">Uso no painel</th><th>Acesso e cobertura</th></tr></thead>
             <tbody class="align-top divide-y">
-              <tr><td class="py-3 pr-4 font-medium">ITBI – Transações por logradouro e mês (residenciais e não residenciais)</td>
-                <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda, publicado no portal Data.Rio</td>
-                <td class="pr-4">Preços, áreas, volume de transações, tipologias</td>
-                <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/datasets/5e4dda4d33f44b1eb9246559b281d1b8_8/about" target="_blank" rel="noopener">Página do dataset</a>. Município do Rio de Janeiro. Base desde 2010; o painel usa de 2018 em diante. Formato: serviço ArcGIS REST / CSV. <span id="mItbi" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">ITBI – transações por imóvel (abas Visão geral, Comparador e Tendência)</td>
+                <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda</td>
+                <td class="pr-4">Preços (mediana do R$/m²), áreas, volume de transações, tipologias</td>
+                <td><a class="text-brand-600 hover:underline" href="https://fazenda.prefeitura.rio/itbi-valores-medios-por-m2-de-transacoes-imobiliarias-por-trecho-de-logradouro/" target="_blank" rel="noopener">Página da Fazenda</a>. Planilhas 2011–2018, 2019–2024 e 2025 em diante, agregadas por rua, mês e tipologia. <span id="mItbi" class="text-gray-500"></span></td></tr>
               <tr><td class="py-3 pr-4 font-medium">ITBI – transações por imóvel (aba “Transações”)</td>
                 <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda</td>
                 <td class="pr-4">Uma linha por transação: rua, número, complemento, tipologia, área, valor declarado, mês e ano</td>
@@ -220,6 +222,10 @@ tailwind.config = { theme: { extend: {
                 <td class="pr-4">B3 (taxa); Banco Central do Brasil (divulgação via SGS)</td>
                 <td class="pr-4">Referência de rendimento de renda fixa</td>
                 <td>Mesma API do Banco Central. Mensal. <span id="mCdi" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">TR (SGS 7811) e meta Selic (SGS 432)</td>
+                <td class="pr-4">Banco Central do Brasil</td>
+                <td class="pr-4">Sugestões da calculadora “Comprar ou alugar”</td>
+                <td>Mesma API do Banco Central, atualizadas pelo scripts/atualizar_indices.py.</td></tr>
               <tr><td class="py-3 pr-4 font-medium">ViaCEP</td>
                 <td class="pr-4">Serviço gratuito de terceiros (<u>não é fonte oficial</u>)</td>
                 <td class="pr-4">Só a busca por CEP: converte o CEP em rua e bairro</td>
@@ -232,10 +238,9 @@ tailwind.config = { theme: { extend: {
           <div class="card"><h3 class="font-bold mb-3">Como os dados do ITBI são tratados</h3>
             <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
               <li id="mAgreg"><b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
-              <li>Mantemos só a transação principal <b>“Compra e venda”</b> e anos a partir de 2018.</li>
-              <li>Descartamos registros sem área ou valor, e com R$/m² fora de <b>R$ 500 a R$ 200.000</b>, para eliminar erros de digitação. O limite superior é uma estimativa nossa: os dados só provam que o erro está entre R$ 142 mil e R$ 379 mil/m².</li>
-              <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. Textos são padronizados (maiúsculas/minúsculas); logradouros abreviados da fonte são expandidos só para a busca.</li>
-              <li>Usamos o campo <i>Média_Valor_Imóvel</i>. A camada também traz <i>Média_Valor_Transação</i>; a diferença exata entre os dois ainda precisa ser confirmada no dicionário do dataset antes de afirmarmos o que o valor representa.</li>
+              <li>Descartamos terrenos, duplicatas, vendas parciais, registros sem área ou valor e R$/m² fora de <b>R$ 500 a R$ 200.000</b> (erros de digitação). O limite superior é uma estimativa nossa.</li>
+              <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. O nome da rua é unificado pelo código do logradouro (as planilhas antigas e a nova escrevem de formas diferentes); abreviações são expandidas só para a busca.</li>
+              <li>Valor usado: <b>valor declarado na guia de ITBI</b> (coluna vl_declarado ou valor_transacoes, conforme a planilha). A Prefeitura não informa o tipo de transação, então não há filtro de “compra e venda”.</li>
             </ul>
           </div>
           <div class="card"><h3 class="font-bold mb-3">Como calculamos</h3>
@@ -254,7 +259,7 @@ tailwind.config = { theme: { extend: {
           <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
             <li><b>Aba Transações – o que ela é e o que não é.</b> Mostra o valor <b>declarado na guia de ITBI</b>, com rua, número e complemento (apartamento) como publicados pela Prefeitura. A fonte não traz o dia da venda nem o tipo de transação (compra e venda, cessão etc.), então nem toda linha é necessariamente uma compra e venda comum. O complemento é texto livre, sem padrão. Terrenos, linhas com área ou valor inválidos e duplicatas ficam de fora; vendas parciais e R$/m² fora de R$ 500–200.000 aparecem marcadas e não entram nas estatísticas. A área vem arredondada em m² inteiros.</li>
             <li><b>Mediana do bairro, média da rua.</b> Bairro e cidade usam a mediana real das vendas. Uma rua isolada usa a média, que pode ser distorcida por um imóvel atípico. A aba <b>Transações</b> mostra também os percentis 25 e 75.</li>
-            <li><b>Não é um índice de preços puro.</b> O R$/m² médio de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
+            <li><b>Não é um índice de preços puro.</b> O R$/m² de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
             <li><b>Preço de ITBI não é necessariamente o preço efetivamente pago, nem o valor atual de mercado.</b> Há defasagem de publicação: a tabela omite o mês mais recente.</li>
             <li><b>O volume varia muito entre regiões.</b> Ruas e bairros com poucas transações geram séries instáveis; veja sempre o número de transações.</li>
             <li><b>Comparação com o CDI é simplificada.</b> O CDI é bruto (antes de Imposto de Renda); o imóvel tem custos (ITBI, corretagem, IPTU, condomínio) e pode gerar aluguel, que não entram na conta. Desempenho passado não garante resultado futuro.</li>
@@ -288,7 +293,8 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=mediana3"></script>
+<script src="app.js?v=calc5"></script>
+<script src="calc.js?v=calc5"></script>
 <script src="transacoes.js"></script>
 <script src="combo.js"></script>
 </body>

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Atualiza public/indices.json com IPCA e CDI mensais, a partir da API de dados abertos do
+Atualiza public/indices.json com IPCA, CDI e TR mensais e a meta Selic atual, a partir da API de dados abertos do
 Banco Central do Brasil (Sistema Gerenciador de Séries Temporais - SGS).
 
 Séries (códigos SGS):
     433   IPCA - variação mensal (% a.m.)         -> índice produzido pelo IBGE
     4391  CDI  - acumulado no mês (% a.m.)        -> taxa apurada e divulgada pela B3
+    7811  TR   - primeiro dia do mês (% a.m.)     -> Banco Central (usada na calculadora "Comprar ou alugar")
+    432   Meta Selic (% a.a.)                     -> Copom/Banco Central; só o último valor (calculadora)
 
 Uso:
     python scripts/atualizar_indices.py
@@ -26,7 +28,11 @@ SERIES = {
              "instituicao": "IBGE (divulgado pelo Banco Central, SGS 433)", "min": -2.0, "max": 5.0},
     "cdi": {"codigo": 4391, "nome": "CDI – acumulado no mês", "unidade": "% ao mês",
             "instituicao": "B3 (divulgado pelo Banco Central, SGS 4391)", "min": 0.0, "max": 2.5},
+    # TR do 1º dia do mês: já é conhecida no início do mês, então o mês atual NÃO é descartado
+    "tr": {"codigo": 7811, "nome": "TR – primeiro dia do mês", "unidade": "% ao mês",
+           "instituicao": "Banco Central do Brasil (SGS 7811)", "min": 0.0, "max": 2.0, "mes_atual": True},
 }
+SELIC = {"codigo": 432, "nome": "Meta Selic", "unidade": "% ao ano", "instituicao": "Copom / Banco Central (SGS 432)"}
 CABECALHOS = {"User-Agent": "Mozilla/5.0 (compatible; ImobRJ/1.0)", "Accept": "application/json"}
 
 
@@ -99,7 +105,7 @@ def main():
             except Exception as e:
                 sys.exit(f"ERRO: não consegui baixar {cfg['nome']} ({ini} a {fim}) do Banco Central ({e}). Mantendo o arquivo atual.")
         dados = converter(chave, cfg, brutos)
-        if hoje.strftime("%Y-%m") in dados:   # o mês em andamento ainda está incompleto (ex.: CDI parcial)
+        if not cfg.get("mes_atual") and hoje.strftime("%Y-%m") in dados:   # o mês em andamento ainda está incompleto (ex.: CDI parcial)
             dados.pop(hoje.strftime("%Y-%m"))
             print(f"  (mês em andamento {hoje.strftime('%Y-%m')} descartado: ainda incompleto)")
         ultimo = max(dados)
@@ -107,16 +113,30 @@ def main():
         resultado[chave] = {"codigo_sgs": cfg["codigo"], "nome": cfg["nome"], "unidade": cfg["unidade"],
                             "instituicao": cfg["instituicao"], "dados": dados}
 
+    # meta Selic: só o valor mais recente (série diária; não precisa do histórico)
+    print(f"Baixando {SELIC['nome']} (SGS {SELIC['codigo']})…")
+    try:
+        ult = baixar(args.base.format(codigo=SELIC["codigo"]) + "/ultimos/1?formato=json")[-1]
+        v = float(str(ult["valor"]).replace(",", "."))
+        if not (1.0 <= v <= 40.0):
+            sys.exit(f"ERRO: meta Selic = {v} fora do intervalo plausível. Mantendo o arquivo atual.")
+    except SystemExit:
+        raise
+    except Exception as e:
+        sys.exit(f"ERRO: não consegui baixar a meta Selic do Banco Central ({e}). Mantendo o arquivo atual.")
+    selic = {"codigo_sgs": SELIC["codigo"], "nome": SELIC["nome"], "unidade": SELIC["unidade"],
+             "instituicao": SELIC["instituicao"], "valor": v, "data": ult["data"]}
+    print(f"  {v}% a.a. (em {ult['data']})")
     saida = Path(args.saida); saida.mkdir(parents=True, exist_ok=True)
     arq = saida / "indices.json"
     antigo = json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else {}
-    if antigo.get("series") == resultado:
+    if antigo.get("series") == resultado and antigo.get("selic_meta", {}).get("valor") == v:
         print("Sem mudanças nos índices.")
         return
     arq.write_text(json.dumps({
         "gerado_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "fonte": "Banco Central do Brasil – SGS (api.bcb.gov.br)",
-        "series": resultado}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        "series": resultado, "selic_meta": selic}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"indices.json atualizado ({arq}).")
 
 

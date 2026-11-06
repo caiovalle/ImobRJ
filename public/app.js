@@ -1,4 +1,4 @@
-// ImobRJ app.js — versão mediana v3
+// ImobRJ app.js — versão calculadora v5
 /* ImobRJ – lógica do dashboard. Lê dados.json (campos: bairro, logradouro, area, valor, valor_m2, transacoes, tipo, tipologia, ano, mes) */
 
 // ---------- Utilidades ----------
@@ -174,6 +174,11 @@ function parseIdx(j, origem) {
     if (m.size < 24) throw new Error('série curta: ' + nome);
     o[nome] = m; o.fim[nome] = minmax(m.keys())[1]; o.ini = Math.max(o.ini ?? -Infinity, minmax(m.keys())[0]);
   }
+  if (j.series.tr?.dados) {        // opcional (usado só na calculadora)
+    const m = new Map(Object.entries(j.series.tr.dados).map(([ym, v]) => [tOf(ym), +v]));
+    if (m.size >= 12) { o.tr = m; o.fim.tr = minmax(m.keys())[1]; }
+  }
+  if (j.selic_meta?.valor != null) o.selic = j.selic_meta;   // { valor: 13.75, data: '05/11/2026' }
   return o;
 }
 async function loadIndices() {
@@ -219,15 +224,16 @@ function render() {
   B = baseRows(); MB = medBase();
   const sc = inScope(B);
   const has = sc.length > 0;
-  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx';   // abas que não dependem de local/filtros
+  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
-  const semBarra = TAB === 'method' || TAB === 'tx';
+  const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc';
   $('scopeHead').classList.toggle('hidden', semBarra); $('filtersBar').classList.toggle('hidden', semBarra);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && !solo)));
   $('scopeTitle').textContent = S.label;
   if (TAB === 'history') return renderHistory();
   if (TAB === 'method') return renderMethodAuto();
   if (TAB === 'tx') return renderTx();
+  if (TAB === 'calc') return renderCalc();
   if (!has) return;
   $('scopeSub').innerHTML = `${num(sc.length)} registros · ${F.de}–${F.ate}` + (S.cep ? ` · <span class="text-brand-600 font-medium">CEP ${S.cep}</span>` : '') + (S.ceps?.length ? ' · CEPs: ' + S.ceps.map(c => `<span class="bg-brand-100 text-brand-900 rounded px-1.5 py-0.5 text-xs">${c}</span>`).join(' ') : '');
   ({ overview: renderOverview, compare: renderCompare, trend: renderTrend })[TAB](sc);
@@ -535,10 +541,10 @@ function renderMethodAuto() {
   fetch('transacoes/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) el('mTx').textContent = `Neste painel: ${num(j.total)} transações, ${j.ano_min}–${j.ano_max}, ${num(j.bairros.length)} bairros.`; else el('mTx').textContent = 'Ainda não publicada.'; }).catch(() => {});
   const porImovel = META?.origem === 'fazenda_por_imovel';
   if (el('mAgreg')) el('mAgreg').innerHTML = porImovel
-    ? '<b>Nas abas Visão geral, Comparador e Tendência</b>, os dados vêm da mesma base por imóvel da aba Transações, agregada por rua, mês e tipologia. O <b>preço por m² é a mediana</b> das transações (bairro e cidade; períodos com menos de ${MED_MIN} vendas ficam em branco); para uma rua isolada, que tem poucas vendas, usa-se a média ponderada. Entram só vendas integrais com R$/m² entre R$ 500 e R$ 200.000, sem duplicatas; terrenos ficam de fora. Como a fonte não informa o tipo de transação, não há filtro de “compra e venda” (existia na base anterior do Data.Rio).'
+    ? '<b>Nas abas Visão geral, Comparador e Tendência</b>, os dados vêm da mesma base por imóvel da aba Transações, agregada por rua, mês e tipologia. O <b>preço por m² é a mediana</b> das transações (bairro e cidade; períodos com menos de ' + MED_MIN + ' vendas ficam em branco); para uma rua isolada, que tem poucas vendas, usa-se a média ponderada. Entram só vendas integrais com R$/m² entre R$ 500 e R$ 200.000, sem duplicatas; terrenos ficam de fora. Como a fonte não informa o tipo de transação, não há filtro de “compra e venda” (a base antiga do Data.Rio, usada até 2026, tinha).'
     : '<b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.';
   if (ROWS.length) { const [a, b] = minmax(ROWS, r => r.t);
-    el('mItbi').textContent = (porImovel ? 'Nas abas Visão geral, Comparador e Tendência esta base foi substituída pela base por imóvel (linha abaixo). ' : '') + `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
+    el('mItbi').textContent = `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
   for (const n of ['ipca', 'cdi']) el('m' + n[0].toUpperCase() + n.slice(1)).textContent = IDX
     ? `Neste painel: ${ymLabel(minmax(IDX[n].keys())[0])} a ${ymLabel(IDX.fim[n])}` + (IDX.origem === 'bcb' ? ' (lido direto do BCB neste acesso)' : `, baixado em ${IDX.gerado_em.split('-').reverse().join('/')}`) + '.'
     : 'Ainda não carregado (rode scripts/atualizar_indices.py).';
@@ -547,7 +553,7 @@ function renderMethodAuto() {
 function syncFilters() { paintPills(); $('fTipo').value = F.tipo; $('fTip').value = F.tip; $('fDe').value = F.de; $('fAte').value = F.ate; $('fGran').value = F.gran; }
 
 // ---------- Abas: endereço próprio (#aba) e rolagem até o início do conteúdo ----------
-const ABAS = ['overview', 'compare', 'trend', 'tx', 'history', 'method'];
+const ABAS = ['overview', 'compare', 'trend', 'tx', 'calc', 'history', 'method'];
 const abaDoEndereco = () => { const a = location.hash.slice(1); return ABAS.includes(a) ? a : 'overview'; };
 function marcarAba() {
   document.querySelectorAll('.tab-btn').forEach(x => {
