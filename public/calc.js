@@ -1,5 +1,5 @@
-// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.  (versão calc5)
-// Usa do app.js: $, brl, num, mk, lineDs, yBRL, S, BAIRROS, MED, MED_MIN, medOf, IDX, fator, ymLabel.
+// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.  (versão calc12)
+// Usa do app.js: $, areaGet, areaSet, brl, num, mk, lineDs, yBRL, S, BAIRROS, MED, MED_MIN, medOf, IDX, fator, ymLabel.
 // Simulação educativa, mês a mês. Não é recomendação.
 
 // ---------- Referências de mercado (ÚNICO lugar para atualizar à mão) ----------
@@ -21,7 +21,7 @@ const CALC_REF = {
   corretagem: 6,       // comissão de venda (estimativa usual; negociável)
   manutencao: 0.5      // manutenção e reformas, % a.a. do valor do imóvel (estimativa)
 };
-// Versão calc11
+// Versão calc12
 const f2 = n => (Math.round(n * 100) / 100).toString().replace('.', ',');
 const CAMPOS_MOEDA = new Set(['cDinheiro','cOrcamento','cValor','cFgts','cSeguros','cTarifa','cAluguel','cAmortAnual']);
 const parseMoeda = v => { const d = String(v ?? '').replace(/\D/g, ''); return d ? +d : 0; };
@@ -56,6 +56,8 @@ const CALC_CAMPOS = [
 ];
 
 let CALC_OK = false, CALC_EDIT = new Set();   // campos que o usuário mexeu (não sobrescrever com sugestões)
+// Entrada automática: enquanto o usuário não digitar a entrada (cEntrada fora de CALC_EDIT), ela é calculada a partir de dinheiro + FGTS
+let SENS_EXP = false, SENS_ULT = null;        // matriz de sensibilidade expandida? / últimos parâmetros (para redesenhar ao expandir)
 
 // IPCA, CDI, TR e Selic: do indices.json quando houver; senão, CALC_REF
 function calcSugestoes() {
@@ -97,7 +99,7 @@ function calcMontar() {
     </div>
     <div class="card flex flex-wrap items-end gap-3 text-sm">
       <div><label class="text-xs font-semibold text-gray-600">Bairro</label><select id="cBairro" class="sel block mt-1 min-w-[12rem]"></select></div>
-      <div><label class="text-xs font-semibold text-gray-600">Área</label><div class="flex items-center gap-2 mt-1"><input id="cArea" type="number" min="10" step="1" value="70" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
+      <div><label class="text-xs font-semibold text-gray-600">Área</label><div class="flex items-center gap-2 mt-1"><input id="cArea" type="number" min="10" step="1" value="${areaGet()}" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
       <button id="cUsarMed" class="pill on"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Estimar valor pela mediana</button>
       <p id="cMedInfo" class="text-xs text-gray-500 basis-full"></p>
     </div>
@@ -106,7 +108,7 @@ function calcMontar() {
     ${grupo('Imóvel e compra', ['cValor', 'cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
       ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
       <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
-      ${grupo('Aluguel', ['cAluguel', 'cReajAluguel'], chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
+      ${grupo('Aluguel', ['cAluguel', 'cReajAluguel'], `<div class="sm:col-span-2"><label for="cAlugPct" class="text-xs font-semibold text-gray-600">Ou informe o aluguel em % do valor do imóvel</label><div class="mt-1 flex items-center gap-2"><input id="cAlugPct" type="number" inputmode="decimal" step="0.1" min="0" class="sel w-28 text-right"><span class="text-xs text-gray-500">% a.a. do valor</span></div><p class="text-[11px] text-gray-400 mt-0.5">Converte para R$/mês no campo “Aluguel inicial” (e vice-versa).</p></div>` + chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
       ${grupo('Investimento', ['cRendReal', 'cIR', 'cIpca'])}
       ${grupo('Comparação', ['cHoriz', 'cCorret', 'cIRGanho'], chk('cVender', 'Contar o imóvel como se fosse vendido no fim (desconta corretagem e IR)'))}
       <div class="card flex flex-wrap items-center gap-3 text-sm self-start"><span class="font-semibold">Sistema de amortização:</span>
@@ -144,7 +146,12 @@ function calcMontar() {
   const root = $('tab-calc');
   root.addEventListener('input', e => {
     if (e.target.id === 'cenNome' || e.target.classList.contains('cenSel')) return;
-    if (e.target.id === 'cArea') return calcUsarMediana(true);
+    if (e.target.id === 'cArea') { areaSet(e.target.value); return calcUsarMediana(true); }
+    if (e.target.id === 'cAlugPct') {               // % a.a. → R$/mês
+      const pctAA = cv('cAlugPct'), V = cv('cValor');
+      if (V > 0 && pctAA >= 0) { $('cAluguel').value = formatMoeda(Math.round(V * pctAA / 100 / 12)); CALC_EDIT.add('cAluguel'); }
+      calcSugerir(); calcRodar(); return;
+    }
     if (e.target.dataset.money) e.target.value = formatMoeda(parseMoeda(e.target.value));
     if (e.target.id && (e.target.type === 'number' || e.target.dataset.money)) CALC_EDIT.add(e.target.id);
     calcSugerir(); calcRodar();                      // atualiza sugestões dependentes (aluguel ← valor, horizonte ← prazo)
@@ -152,6 +159,8 @@ function calcMontar() {
   root.addEventListener('change', e => { if (e.target.type === 'checkbox' && !e.target.classList.contains('cenSel')) { calcSugerir(); calcRodar(); } });
   root.addEventListener('click', e => {
     const h = e.target.closest('.cHelp'); if (h) { $(h.dataset.for + 'Help').classList.toggle('hidden'); return; }
+    if (e.target.closest('#cEntAuto')) { CALC_EDIT.delete('cEntrada'); calcSugerir(); calcRodar(); return; }
+    if (e.target.closest('#cSensExp')) { SENS_EXP = !SENS_EXP; if (SENS_ULT) calcSensibilidade(SENS_ULT.p, SENS_ULT.r0); return; }
     const sis = e.target.closest('.cSis'); if (sis) { root.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x === sis)); calcRodar(); return; }
     const perfil = e.target.closest('.cPerfil'); if (perfil) { const ipca = cv('cIpca'), nom = +perfil.dataset.nom, real = ((1 + nom / 100) / (1 + ipca / 100) - 1) * 100; $('cRendReal').value = real.toFixed(2); CALC_EDIT.add('cRendReal'); root.querySelectorAll('.cPerfil').forEach(x => x.classList.toggle('on', x === perfil)); $('cPerfilInfo').textContent = `${perfil.textContent.trim()}: ${f2(nom)}% nominal equivale a ${f2(real)}% real com IPCA de ${f2(ipca)}%.`; calcRodar(); }
   });
@@ -195,25 +204,44 @@ function calcSugerir() {
   setSug('cItbi', CALC_REF.itbi, 'Rio de Janeiro: 3%');
   setSug('cCartorio', CALC_REF.cartorio, 'estimativa: ~1%');
   setSug('cManut', CALC_REF.manutencao, 'estimativa: 0,5% a 1% a.a.');
-  setSug('cEntrada', 20, '');
-  const entValor = V * cv('cEntrada') / 100, fgEntrada = Math.min(cv('cFgts'), entValor);
-  $('cEntradaSug').innerHTML = `${f2(cv('cEntrada'))}% = <b>${brl(entValor)}</b>` + (fgEntrada > 0 ? ` · FGTS cobre ${brl(fgEntrada)} · dinheiro próprio ${brl(entValor - fgEntrada)}` : ' · mínimo usual: 20%');
   setSug('cFgts', 0, 'informe se for usar');
+  setSug('cTarifa', CALC_REF.tarifa, 'em geral R$ 2.000 a R$ 3.500');
   {
-    const custo = V * (cv('cItbi') + cv('cCartorio')) / 100, fg = cv('cFgts'), E = V * cv('cEntrada') / 100;
-    const needA = Math.max(0, V + custo - Math.min(fg, V)), needB = Math.max(0, E - Math.min(fg, E) + custo + cv('cTarifa'));
-    setSug('cDinheiro', Math.ceil(needA / 1000) * 1000, `à vista precisa de ${brl(needA)} · financiar precisa de ${brl(needB)}`);
+    // Entrada automática (item 1): se o dinheiro não cobre a compra à vista, entrada = dinheiro + FGTS − (ITBI + cartório) − tarifas
+    const custo = V * (cv('cItbi') + cv('cCartorio')) / 100, fg = cv('cFgts'), tarifa = cv('cTarifa');
+    const needA = Math.max(0, V + custo - Math.min(fg, V)), dinSug = Math.ceil(needA / 1000) * 1000;
+    const dinVazio = CALC_EDIT.has('cDinheiro') && $('cDinheiro').value === '';
+    const din = CALC_EDIT.has('cDinheiro') ? (dinVazio ? needA : cv('cDinheiro')) : dinSug;
+    const precisaFin = din < needA - 1, manual = CALC_EDIT.has('cEntrada');
+    let entTxt = '';
+    if (precisaFin && !manual) {
+      const eR = Math.min(V, Math.max(0, din + fg - custo - tarifa)), eP = V > 0 ? Math.floor(eR / V * 1e6) / 1e4 : 0;   // 4 casas, para baixo: não passa do dinheiro
+      $('cEntrada').value = eP;
+      entTxt = `entrada calculada: <b>${f2(Math.round(eP * 100) / 100)}% = ${brl(eR)}</b> (dinheiro ${brl(din)}${fg > 0 ? ` + FGTS ${brl(fg)}` : ''} − custos ${brl(custo + tarifa)})` +
+        (din < custo + tarifa ? ' · <span class="text-red-600">o dinheiro não cobre ITBI, cartório e tarifas</span>' : eP < 20 ? ' · <span class="text-amber-700">abaixo do mínimo usual de 20%</span>' : '');
+    } else if (!manual) $('cEntrada').value = 20;
+    const entValor = V * cv('cEntrada') / 100, fgEntrada = Math.min(fg, entValor);
+    $('cEntradaSug').innerHTML = entTxt || (`${f2(Math.round(cv('cEntrada') * 100) / 100)}% = <b>${brl(entValor)}</b>` + (fgEntrada > 0 ? ` · FGTS cobre ${brl(fgEntrada)} · dinheiro próprio ${brl(entValor - fgEntrada)}` : ' · mínimo usual: 20%') +
+      (manual && precisaFin ? ' · <button type="button" id="cEntAuto" class="text-brand-600 hover:underline">calcular pelo seu dinheiro</button>' : !manual ? ' · seu dinheiro cobre a compra à vista' : ''));
+    const E = entValor, needB = Math.max(0, E - Math.min(fg, E) + custo + tarifa);
+    setSug('cDinheiro', dinSug, `à vista precisa de ${brl(needA)} · financiar com ${f2(Math.round(cv('cEntrada') * 100) / 100)}% de entrada precisa de ${brl(needB)}`);
   }
   setSug('cOrcamento', '', 'vazio = automático');
   setSug('cPrazo', 30, 'sugestão: 30 anos (máx. 35)');
   setSug('cJuros', CALC_REF.juros, `Caixa SBPE: 10,99% a 11,49% + TR (${CALC_REF.data})`);
   setSug('cTR', s.tr, `12 meses até ${s.trAte}: ${f2(s.tr)}%${auto('tr')}`);
   setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês`);
-  setSug('cTarifa', CALC_REF.tarifa, 'em geral R$ 2.000 a R$ 3.500');
   setSug('cAmortAnual', 0, '0 = sem amortização extra · reduz prazo e juros');
   calcAmortFonteInfo();
   const alug = Math.round(V * CALC_REF.yieldAluguel / 100 / 12 / 50) * 50;
-  setSug('cAluguel', alug, `≈ ${brl(alug)} (${f2(CALC_REF.yieldAluguel)}% a.a. do valor, FipeZAP)`);
+  setSug('cAluguel', alug, '');
+  {   // aluguel → % do valor do imóvel (item 2)
+    const a = cv('cAluguel'), m = V > 0 ? a / V * 100 : 0, aa = m * 12, ref = CALC_REF.yieldAluguel;
+    const p2 = x => x.toFixed(2).replace('.', ','), cmp = Math.abs(aa - ref) < 0.005 ? 'igual à média nacional' : aa < ref ? 'abaixo da média nacional' : 'acima da média nacional';
+    $('cAluguelSug').innerHTML = a > 0 ? `<b>${p2(m)}% a.m. = ${p2(aa)}% a.a.</b> do valor · ${cmp} (${f2(ref)}% a.a., FipeZAP)` +
+      (CALC_EDIT.has('cAluguel') ? ` · sugestão: ${brl(alug)}` : '') : `sugestão: ${brl(alug)} (${f2(ref)}% a.a. do valor, FipeZAP)`;
+    if (document.activeElement !== $('cAlugPct')) $('cAlugPct').value = a > 0 && V > 0 ? Math.round(aa * 100) / 100 : '';
+  }
   const acompanha = $('cAlugVal').checked;
   $('cReajAluguel').disabled = acompanha; $('cReajAluguel').classList.toggle('opacity-50', acompanha);
   setSug('cReajAluguel', s.ipca, acompanha ? 'usando a valorização do imóvel' : `IPCA 12 meses: ${f2(s.ipca)}%`);
@@ -347,9 +375,12 @@ function calcSimular(p, leve = false) {
   };
   for (const k of 'abc') res[k].hoje = res[k].nom / defl;
   const melhor = validos.reduce((m, k) => res[k].hoje > res[m].hoje ? k : m, validos[0]);
-  if (leve) return { res, mostra, validos, melhor };
+  // quem alugou e investiu compra a mesma casa à vista no fim (preço pela valorização informada; ITBI + cartório, sem corretagem)
+  const cfCustos = imovel * (p.itbi + p.cartorio) / 100, cfSobra = res.c.nom - imovel - cfCustos;
+  const compraFinal = { preco: imovel, custos: cfCustos, patr: res.c.nom, sobra: cfSobra, sobraHoje: cfSobra / defl, precoHoje: imovel / defl };
+  if (leve) return { res, mostra, validos, melhor, compraFinal };
   const cet = temFin ? cetAA(F, tarifa, financiamento(F, n, p.juros, 0, p.sis, seg, p.amortAnual).parc) : null;
-  return { res, mostra, validos, melhor, viavelA, viavelB, needA, needB, dinheiro, est, orc0, serie, fin, cet, K, custo, F: Math.max(F, 0), fgAmort, temFin, n, nReal: fin.meses, H,
+  return { res, mostra, validos, melhor, compraFinal, viavelA, viavelB, needA, needB, dinheiro, est, orc0, serie, fin, cet, K, custo, F: Math.max(F, 0), fgAmort, temFin, n, nReal: fin.meses, H,
            totAlug, totManut, aluguelFinal: aluguel, carteiraFalta, alternativoAmort, faltaB: Math.max(0, needB - dinheiro), faltaA: Math.max(0, needA - dinheiro),
            pagoFin: fin.parc.slice(0, Math.min(fin.meses, H)).reduce((s, x) => s + x, 0), rendNom: ((1 + p.ipca / 100) * (1 + p.rendReal / 100) - 1) * 100 };
 }
@@ -365,6 +396,7 @@ function pontoVirada(p, campo, lo, hi) {        // valor do campo em que comprar
   return (a + b) / 2;
 }
 function calcSensibilidade(p, r0) {
+  SENS_ULT = { p, r0 };
   if (vantagemCompra(p) == null) { $('cSens').innerHTML = '<h3 class="font-bold mb-1">Sensibilidade</h3><p class="text-sm text-gray-500">Não há caminho de compra viável com o dinheiro informado; a sensibilidade aparece quando houver.</p>'; return; }
   const pc = v => f2(Math.round(v * 10) / 10) + '%';
   // campo: parâmetro do modelo; v: ponto de virada nesse parâmetro; mostra: converte para a unidade exibida
@@ -376,25 +408,33 @@ function calcSensibilidade(p, r0) {
   };
   const yld = x => x * 12 / p.V * 100;
   // grade: rendimento real × valorização real
-  const reais = [-2, -1, 0, 1, 2, 3], rends = [p.rendReal - 3, p.rendReal - 2, p.rendReal - 1, p.rendReal, p.rendReal + 1, p.rendReal + 2].filter(x => x >= -1);
+  // compacta: valorização real −2…+3% × rendimento rendReal−3…+2; expandida: −4…+6% × −1…+12% (ou mais, se a premissa passar disso)
+  const faixa = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  const reais = SENS_EXP ? faixa(-4, 6) : [-2, -1, 0, 1, 2, 3];
+  const rends = SENS_EXP ? faixa(-1, Math.max(12, Math.ceil(p.rendReal + 2)))
+    : [p.rendReal - 3, p.rendReal - 2, p.rendReal - 1, p.rendReal, p.rendReal + 1, p.rendReal + 2].filter(x => x >= -1);
   const cores = { a: '#1e3a5f', b: '#ef4b3f', c: '#14b8a6' }, nomes = { a: 'À vista', b: 'Financ.', c: 'Alugar' };
   const valReal = ((1 + p.valoriz / 100) / (1 + p.ipca / 100) - 1) * 100;
+  const maisPerto = (lst, v) => lst.reduce((m, x) => Math.abs(x - v) < Math.abs(m - v) ? x : m, lst[0]);
+  const rrAtual = maisPerto(rends, p.rendReal), vrAtual = maisPerto(reais, valReal);   // célula mais próxima da premissa atual
+  const exata = Math.abs(rrAtual - p.rendReal) < 0.05 && Math.abs(vrAtual - valReal) < 0.05;
   const cel = (rr, vr) => {
     const k = calcSimular({ ...p, rendReal: rr, valoriz: ((1 + p.ipca / 100) * (1 + vr / 100) - 1) * 100 }, true).melhor;
-    const atual = Math.abs(rr - p.rendReal) < 1e-9 && Math.abs(vr - Math.round(valReal)) < 1e-9;
-    return `<td class="text-center text-[11px] font-semibold text-white py-1.5 ${atual ? 'outline outline-2 outline-offset-[-3px] outline-white' : ''}" style="background:${cores[k]}">${nomes[k]}</td>`;
+    const atual = rr === rrAtual && vr === vrAtual;
+    return `<td class="text-center text-[11px] font-semibold text-white py-1.5 min-w-[44px] ${atual ? 'outline outline-2 outline-offset-[-3px] outline-white' : ''}" style="background:${cores[k]}">${nomes[k]}</td>`;
   };
-  $('cSens').innerHTML = `<h3 class="font-bold mb-1">Sensibilidade: o que inverteria o resultado?</h3>
+  $('cSens').innerHTML = `<div class="flex flex-wrap items-start gap-2 mb-1"><h3 class="font-bold mr-auto">Sensibilidade: o que inverteria o resultado?</h3>
+    <button type="button" id="cSensExp" class="pill text-xs whitespace-nowrap"><i class="fa-solid ${SENS_EXP ? 'fa-compress' : 'fa-expand'} mr-1"></i>${SENS_EXP ? 'Recolher matriz' : 'Expandir matriz'}</button></div>
     <p class="text-xs text-gray-500 mb-3">Mudando uma premissa por vez (as demais como estão acima), onde ${r0.validos.includes('a') ? '“comprar à vista”' : '“comprar financiado”'}${r0.validos.includes('a') && r0.validos.includes('b') ? ' (ou financiado, o melhor dos dois)' : ''} e “alugar e investir” empatam.</p>
     <ul class="text-sm space-y-1.5 list-disc pl-5 mb-4">
       ${linha('Rendimento real dos investimentos', 'rendReal', -2, 15)}
       ${linha('Valorização do imóvel (nominal)', 'valoriz', p.ipca - 6, p.ipca + 12)}
       ${linha('Aluguel (% do valor do imóvel por ano)', 'aluguel', p.V * 0.01 / 12, p.V * 0.15 / 12, yld)}
     </ul>
-    <div class="overflow-x-auto"><table class="text-xs min-w-[460px]"><thead><tr><th class="text-left pr-2 font-normal text-gray-500">Rend. real ↓ · Valorização real →</th>${reais.map(v => `<th class="px-1 font-semibold">${v > 0 ? '+' : ''}${v}%</th>`).join('')}</tr></thead><tbody>
-      ${rends.map(rr => `<tr><th class="text-left pr-2 font-semibold">${pc(rr)}</th>${reais.map(vr => cel(rr, vr)).join('')}</tr>`).join('')}
+    <div class="overflow-x-auto"><table class="text-xs ${SENS_EXP ? 'min-w-[640px]' : 'min-w-[460px]'}"><thead><tr><th class="sticky left-0 z-10 bg-white text-left pr-2 font-normal text-gray-500 leading-tight whitespace-nowrap">Rend. real ↓<br>Valoriz. real →</th>${reais.map(v => `<th class="px-1 font-semibold min-w-[44px]">${v > 0 ? '+' : ''}${v}%</th>`).join('')}</tr></thead><tbody>
+      ${rends.map(rr => `<tr><th class="sticky left-0 z-10 bg-white text-left pr-2 font-semibold">${pc(rr)}</th>${reais.map(vr => cel(rr, vr)).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <p class="text-[11px] text-gray-500 mt-2">Cada célula mostra o caminho com maior patrimônio (entre os que se aplicam ao seu dinheiro). Valorização real = acima do IPCA (0% = imóvel acompanha a inflação). ${Math.abs(valReal - Math.round(valReal)) < 0.05 ? 'A célula com contorno é a premissa atual.' : `Premissa atual: valorização real de ${pc(valReal)}.`}</p>`;
+    <p class="text-[11px] text-gray-500 mt-2"><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.a}"></span>À vista · <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.b}"></span>Financ. · <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.c}"></span>Alugar. Cada célula mostra o caminho com maior patrimônio (entre os que se aplicam ao seu dinheiro). Valorização real = acima do IPCA (0% = imóvel acompanha a inflação). A célula com contorno é ${exata ? 'a premissa atual' : `a mais próxima da premissa atual (rendimento real ${pc(p.rendReal)}, valorização real ${pc(valReal)})`}.${SENS_EXP ? '' : ' Use “Expandir matriz” para ver mais combinações.'}</p>`;
 }
 
 // monta os parâmetros a partir de um estado { campos: {id: valor}, chk: {id: bool}, sis }
@@ -411,7 +451,8 @@ function calcParams(st) {
 function calcEstado() {
   const campos = {}; for (const [id] of CALC_CAMPOS) campos[id] = $(id).value;
   return { campos, chk: { cAlugVal: $('cAlugVal').checked, cVender: $('cVender').checked, cFinOpc: $('cFinOpc').checked }, sis: document.querySelector('.cSis.on')?.dataset.s || 'sac',
-           bairro: $('cBairro').value, bairroNome: $('cBairro').selectedOptions[0]?.textContent || '', area: $('cArea').value, amortFonte: $('cAmortFonte').value };
+           bairro: $('cBairro').value, bairroNome: $('cBairro').selectedOptions[0]?.textContent || '', area: $('cArea').value, amortFonte: $('cAmortFonte').value,
+           entAuto: !CALC_EDIT.has('cEntrada') };
 }
 
 // ---------- Cenários salvos (no navegador, localStorage) ----------
@@ -434,8 +475,9 @@ function cenCarregar(id) {
   for (const [k, v] of Object.entries(c.campos)) { if ($(k)) { $(k).value = CAMPOS_MOEDA.has(k) ? formatMoeda(parseMoeda(v)) : v; CALC_EDIT.add(k); } }
   $('cAlugVal').checked = !!c.chk.cAlugVal; $('cVender').checked = !!c.chk.cVender; $('cFinOpc').checked = c.chk.cFinOpc == null ? true : !!c.chk.cFinOpc;
   if (c.campos.cDinheiro == null) CALC_EDIT.delete('cDinheiro');
+  if (c.entAuto) CALC_EDIT.delete('cEntrada');     // cenários antigos (sem entAuto) mantêm a entrada salva
   document.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x.dataset.s === c.sis));
-  if (c.bairro != null) $('cBairro').value = c.bairro; if (c.area) $('cArea').value = c.area; $('cAmortFonte').value = c.amortFonte || 'renda'; calcAmortFonteInfo();
+  if (c.bairro != null) $('cBairro').value = c.bairro; if (c.area) { $('cArea').value = c.area; areaSet(c.area); } $('cAmortFonte').value = c.amortFonte || 'renda'; calcAmortFonteInfo();
   calcSugerir(); calcRodar(); toast(`“${c.nome}” carregado nos campos.`);
   $('tab-calc').scrollIntoView({ behavior: 'smooth' });
 }
@@ -482,6 +524,7 @@ function cenComparar() {
     ${linhaRes('Comprar à vista', x => val(x, 'a'))}
     ${linhaRes('Comprar financiado', x => val(x, 'b'))}
     ${linhaRes('Alugar e investir', x => val(x, 'c'))}
+    ${linhaRes('Alugar e comprar a mesma casa à vista no fim', x => { const s = x.r.compraFinal.sobraHoje; return `<span class="${s >= 0 ? 'text-emerald-700' : 'text-red-600'}">${s >= 0 ? 'sobram' : 'faltam'} ${brl(Math.abs(s))}</span>`; })}
     ${linhaRes('Seu dinheiro hoje', x => brl(x.r.dinheiro))}
     ${linhaRes('1ª parcela (com seguros)', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.parc[0]) : '—')}
     ${linhaRes('Renda mínima (parcela ≤ 30%)', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.parc[0] / 0.3) : '—')}
@@ -534,7 +577,11 @@ function calcRodar() {
   for (const [k, nome] of cen) if (r.est[k].n) av.push(aviso('text-amber-700', `${nome}: em ${num(r.est[k].n)} meses o gasto passa do orçamento (até ${brl(r.est[k].max)}/mês a mais, em valores de hoje); a diferença sai dos investimentos.`));
   $('cResumo').innerHTML = `<div class="card border-2" style="border-color:${melhor[2]}"><p class="text-base"><b>${melhor[1]}</b> deixa o maior patrimônio após <b>${num(p.horiz)} anos</b>${segundo ? `: ${f1(dif)}% acima de “${segundo[1].toLowerCase()}”` : ''}, com as premissas acima.${segundo && dif < 5 ? ' A diferença é pequena: pequenas mudanças nas premissas podem inverter o resultado (veja a sensibilidade).' : ''}</p>
       ${av.join('')}<p class="text-[11px] text-gray-400 mt-1">Todo mês, cada caminho tem o mesmo ${orcTxt}; o que sobra é investido.</p></div>
-    <div class="grid sm:grid-cols-${cen.length} gap-4">${cen.map(card).join('')}</div>`;
+    <div class="grid sm:grid-cols-${cen.length} gap-4">${cen.map(card).join('')}</div>
+    ${(() => { const cf = r.compraFinal, ok = cf.sobra >= 0;
+      return `<div class="card text-sm"><p class="text-xs text-gray-500 mb-1"><i class="fa-solid fa-house-circle-check mr-1" style="color:#14b8a6"></i>Se você alugar e investir por ${num(p.horiz)} anos e comprar a mesma casa à vista no fim</p>
+        <p>Ao final de ${num(p.horiz)} anos, o patrimônio de quem alugou (<b>${brl(cf.patr)}</b>) ${ok ? 'compra' : 'não compra'} a mesma casa à vista (<b>${brl(cf.preco)}</b> + ${brl(cf.custos)} de ITBI e cartório)${ok ? ' e ' : ': '}<b class="${ok ? 'text-emerald-700' : 'text-red-600'}">${ok ? 'sobram' : 'faltam'} ${brl(Math.abs(cf.sobra))}</b> (${brl(Math.abs(cf.sobraHoje))} em valores de hoje).</p>
+        <p class="text-[11px] text-gray-400 mt-1">Valores nominais do ano ${num(p.horiz)}. O preço da casa usa a valorização informada (${f2(p.valoriz)}% a.a.; em valores de hoje, ${brl(cf.precoHoje)}); na compra entram ITBI e cartório, sem corretagem.</p></div>`; })()}`;
   mk('cCalcChart', { type: 'line', data: { labels: r.serie.anos.map(a => a + 'a'), datasets: cen.map(([k, nome, cor]) => lineDs(nome + (inviavel(k) ? ' (falta dinheiro)' : ''), r.serie[k], cor, { borderWidth: 2.5, borderDash: inviavel(k) ? [6, 4] : undefined })) },
     options: { scales: { y: yBRL }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${brl(c.parsed.y)}` } } } } });
   calcSensibilidade(p, r);
@@ -562,6 +609,7 @@ function calcRodar() {
     ${p.fgts > 0 ? lin('FGTS que ficou na conta', { a: brl(R.a.fg), b: brl(R.b.fg), c: brl(R.c.fg) }) : ''}
     ${lin('<b>Patrimônio no fim (nominal)</b>', { a: '<b>' + brl(R.a.nom) + '</b>', b: '<b>' + brl(R.b.nom) + '</b>', c: '<b>' + brl(R.c.nom) + '</b>' })}
     ${lin('<b>Em valores de hoje</b>', { a: '<b>' + brl(R.a.hoje) + '</b>', b: '<b>' + brl(R.b.hoje) + '</b>', c: '<b>' + brl(R.c.hoje) + '</b>' })}
+    ${lin('Alugar e comprar a mesma casa à vista no fim (hoje)', { c: `${r.compraFinal.sobra >= 0 ? 'sobram' : 'faltam'} ${brl(Math.abs(r.compraFinal.sobraHoje))}` })}
     </tbody></table>
     ${tem('b') ? `<p class="text-xs text-gray-500 mt-3">A parcela inclui seguros e taxa de administração e é corrigida pela TR projetada. O banco exige que a 1ª parcela caiba em até 30% da renda bruta familiar: para ${brl(r.fin.parc[0])}, renda mínima de cerca de ${brl(r.fin.parc[0] / 0.3)}.</p>` : ''}`;
 }
@@ -573,6 +621,7 @@ function renderCalc() {
     calcSugerir(); calcUsarMediana(true); cenRender();
   } else {
     if (S.lvl !== 'cidade' && S.nb && !$('cBairro').value) $('cBairro').value = S.nb;
+    if (+$('cArea').value !== areaGet()) { $('cArea').value = areaGet(); calcUsarMediana(true); }   // área mudou na aba Tendência
     calcSugerir();   // índices podem ter chegado depois
   }
   calcRodar();
