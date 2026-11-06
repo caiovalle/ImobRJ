@@ -27,6 +27,9 @@ tailwind.config = { theme: { extend: {
   .hero-sel { border-radius:.75rem; padding:.55rem .8rem; background:rgba(255,255,255,.95); color:#1c2433; font-size:.875rem; font-weight:500; min-width:12rem; max-width:100% }
   input, select { outline:none } input:focus, select:focus { box-shadow:0 0 0 3px rgba(239,75,63,.3) }
   .sug.act { background:#fff1ef }
+  /* início do conteúdo fica logo abaixo do menu fixo; altura mínima evita que abas curtas "puxem" a página de volta ao banner */
+  #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
+  .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
 </head>
 <body class="font-sans text-ink min-h-screen">
@@ -34,8 +37,8 @@ tailwind.config = { theme: { extend: {
 <!-- NAV -->
 <header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-[#ece8e3]">
   <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-    <a href="#" class="flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
-    <nav class="flex gap-1 overflow-x-auto ml-2">
+    <a href="#overview" id="logo" class="shrink-0 flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
+    <nav id="tabsNav" class="tabs-nav flex gap-1 overflow-x-auto ml-2 min-w-0">
       <button data-tab="overview" class="tab-btn active">Visão geral</button>
       <button data-tab="compare" class="tab-btn">Comparador</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
@@ -49,34 +52,34 @@ tailwind.config = { theme: { extend: {
 
 <main class="max-w-7xl mx-auto px-4 pb-16">
   <!-- HERO / BUSCA -->
-  <section class="relative z-30 mt-6 rounded-3xl p-6 sm:p-10 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
-    <p class="text-sm font-semibold opacity-90 mb-2"><i class="fa-solid fa-chart-line mr-1"></i>Dados oficiais de ITBI · Prefeitura do Rio<span id="stamp" class="font-normal opacity-80"></span></p>
-    <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
-    <p class="mt-3 text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
+  <section class="relative z-30 mt-4 rounded-3xl p-5 sm:p-7 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
+    <p class="text-xs sm:text-sm font-semibold opacity-90 mb-1"><i class="fa-solid fa-chart-line mr-1"></i>Dados oficiais de ITBI · Prefeitura do Rio<span id="stamp" class="font-normal opacity-80"></span></p>
+    <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
+    <p class="hidden sm:block mt-2 text-sm text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
 
-    <div class="relative z-50 mt-6 max-w-3xl">
+    <div class="relative z-50 mt-4 max-w-3xl">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
         <input id="search" autocomplete="off" placeholder="Digite um CEP, rua ou bairro…"
-               class="w-full pl-12 pr-32 py-4 rounded-full bg-white text-ink text-base shadow-xl">
+               class="w-full pl-12 pr-32 py-3 rounded-full bg-white text-ink text-base shadow-xl">
         <button id="btnSearch" class="absolute right-2 top-1/2 -translate-y-1/2 bg-ink hover:bg-black text-white font-semibold px-6 py-2.5 rounded-full">Buscar</button>
       </div>
       <div id="suggest" class="hidden absolute left-0 right-0 mt-2 bg-white text-ink border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto" style="z-index:9999"></div>
     </div>
 
-    <div class="mt-4 flex flex-wrap gap-2 items-center text-sm">
+    <div class="mt-3 flex flex-wrap gap-2 items-center text-sm">
       <span class="opacity-80 mr-1">Populares:</span><span id="popular" class="flex flex-wrap gap-2"></span>
     </div>
-    <div class="mt-4 flex flex-wrap gap-3 items-center text-sm">
+    <div class="mt-3 flex flex-wrap gap-3 items-center text-sm">
       <span class="opacity-80">ou escolha:</span>
       <select id="selBairro" class="hero-sel"><option value="">Bairro…</option></select>
       <select id="selRua" class="hero-sel" disabled><option value="">Rua…</option></select>
     </div>
-    <div id="chips" class="mt-4 flex flex-wrap gap-2 text-xs"></div>
+    <div id="chips" class="mt-3 flex flex-wrap gap-2 text-xs"></div>
   </section>
 
   <!-- LOCAL + FILTROS -->
-  <section class="relative z-0 mt-8">
+  <section id="conteudo" class="relative z-0 mt-6">
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h2 id="scopeTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cidade do Rio de Janeiro</h2>
@@ -285,7 +288,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=abas2"></script>
 <script src="transacoes.js"></script>
 <script src="combo.js"></script>
 </body>

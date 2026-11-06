@@ -1,3 +1,4 @@
+// ImobRJ app.js — versão abas v2
 /* ImobRJ – lógica do dashboard. Lê dados.json (campos: bairro, logradouro, area, valor, valor_m2, transacoes, tipo, tipologia, ano, mes) */
 
 // ---------- Utilidades ----------
@@ -85,7 +86,8 @@ function start(raw) {
   $('selBairro').innerHTML = '<option value="">Bairro…</option>' + BAIRROS.map(b => `<option value="${b.nb}">${b.nome}</option>`).join('');
   const pop = [...BAIRROS].sort((a, b) => b.n - a.n).slice(0, 6);
   $('popular').innerHTML = pop.map(b => `<button class="pop bg-white/20 hover:bg-white/30 rounded-full px-3 py-1 font-semibold" data-nb="${b.nb}">${b.nome}</button>`).join('');
-  bindEvents(); renderChips(); render();
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  bindEvents(); renderChips(); TAB = abaDoEndereco(); marcarAba(); render();
   loadIndices().finally(() => { renderMethodAuto(); if (TAB !== 'history') render(); });
 }
 
@@ -475,14 +477,12 @@ function bindEvents() {
   $('popular').addEventListener('click', e => { const p = e.target.closest('.pop'); if (p) { const b = BAIRROS.find(x => x.nb === p.dataset.nb); selecionar({ lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }); } });
   document.querySelectorAll('.tipo').forEach(p => p.onclick = () => { F.tipo = p.dataset.v; syncFilters(); render(); });
 
-  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
-    TAB = b.dataset.tab; document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x === b));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    render();
-  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => irParaAba(b.dataset.tab));
+  $('logo').onclick = e => { e.preventDefault(); irParaAba('overview', true, false); window.scrollTo({ top: 0, behavior: 'smooth' }); };   // logo = início, com o banner
+  window.addEventListener('popstate', () => irParaAba(abaDoEndereco(), false));   // botão "voltar" troca de aba
   document.addEventListener('click', e => {
     const c = e.target.closest('.chip'), d = e.target.closest('.del');
-    if (c) { const h = getHist()[+c.dataset.h]; if (h) { Object.assign(F, h.filtros); syncFilters(); TAB = TAB === 'history' ? 'overview' : TAB; document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === TAB)); window.scrollTo({ top: 0, behavior: 'smooth' }); selecionar(h.sc, false); } }
+    if (c) { const h = getHist()[+c.dataset.h]; if (h) { Object.assign(F, h.filtros); syncFilters(); if (TAB === 'history') { TAB = 'overview'; marcarAba(); history.replaceState(null, '', '#' + TAB); } selecionar(h.sc, false); irParaConteudo(); } }
     if (d) { const h = getHist(); h.splice(+d.dataset.d, 1); setHist(h); renderChips(); renderHistory(); }
   });
   $('btnClear').onclick = () => { setHist([]); renderChips(); renderHistory(); };
@@ -503,4 +503,26 @@ function renderMethodAuto() {
 
 function syncFilters() { paintPills(); $('fTipo').value = F.tipo; $('fTip').value = F.tip; $('fDe').value = F.de; $('fAte').value = F.ate; $('fGran').value = F.gran; }
 
+// ---------- Abas: endereço próprio (#aba) e rolagem até o início do conteúdo ----------
+const ABAS = ['overview', 'compare', 'trend', 'tx', 'history', 'method'];
+const abaDoEndereco = () => { const a = location.hash.slice(1); return ABAS.includes(a) ? a : 'overview'; };
+function marcarAba() {
+  document.querySelectorAll('.tab-btn').forEach(x => {
+    const on = x.dataset.tab === TAB; x.classList.toggle('active', on);
+    if (on) { const nav = $('tabsNav'); nav.scrollTo({ left: x.offsetLeft - (nav.clientWidth - x.offsetWidth) / 2, behavior: 'smooth' }); }
+  });
+}
+// leva o início do conteúdo para logo abaixo do menu fixo; espera o navegador redesenhar a aba nova antes de medir
+function irParaConteudo() {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const el = $('conteudo'), alvo = el.getBoundingClientRect().top + window.scrollY - parseFloat(getComputedStyle(el).scrollMarginTop);
+    if (Math.abs(window.scrollY - alvo) > 4) window.scrollTo({ top: alvo, behavior: 'smooth' });
+  }));
+}
+function irParaAba(aba, registrar = true, rolar = true) {
+  if (!ABAS.includes(aba)) aba = 'overview';
+  const mudou = aba !== TAB; TAB = aba; marcarAba();
+  if (registrar && mudou) history.pushState(null, '', '#' + aba);   // pushState não faz a página pular (diferente de mudar location.hash)
+  render(); if (rolar) irParaConteudo();
+}
 init();
