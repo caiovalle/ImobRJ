@@ -228,9 +228,9 @@ function render() {
   B = baseRows(); MB = medBase();
   const sc = inScope(B);
   const has = sc.length > 0;
-  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc';   // abas que não dependem de local/filtros
+  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
-  const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc';
+  const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';
   $('scopeHead').classList.toggle('hidden', semBarra); $('filtersBar').classList.toggle('hidden', semBarra);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && !solo)));
   $('scopeTitle').textContent = S.label;
@@ -238,6 +238,7 @@ function render() {
   if (TAB === 'method') return renderMethodAuto();
   if (TAB === 'tx') return renderTx();
   if (TAB === 'calc') return renderCalc();
+  if (TAB === 'anuncios') return renderAnuncios();
   if (!has) return;
   $('scopeSub').innerHTML = `${num(sc.length)} registros · ${F.de}–${F.ate}` + (S.cep ? ` · <span class="text-brand-600 font-medium">CEP ${S.cep}</span>` : '') + (S.ceps?.length ? ' · CEPs: ' + S.ceps.map(c => `<span class="bg-brand-100 text-brand-900 rounded px-1.5 py-0.5 text-xs">${c}</span>`).join(' ') : '');
   ({ overview: renderOverview, compare: renderCompare, trend: renderTrend })[TAB](sc);
@@ -609,7 +610,7 @@ function renderMethodAuto() {
 function syncFilters() { paintPills(); $('fTipo').value = F.tipo; $('fTip').value = F.tip; $('fDe').value = F.de; $('fAte').value = F.ate; $('fGran').value = F.gran; }
 
 // ---------- Abas: endereço próprio (#aba) e rolagem até o início do conteúdo ----------
-const ABAS = ['overview', 'compare', 'trend', 'tx', 'calc', 'history', 'method'];
+const ABAS = ['overview', 'compare', 'trend', 'tx', 'anuncios', 'calc', 'history', 'method'];
 const abaDoEndereco = () => { const a = location.hash.slice(1); return ABAS.includes(a) ? a : 'overview'; };
 function marcarAba() {
   document.querySelectorAll('.tab-btn').forEach(x => {

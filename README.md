@@ -8,7 +8,7 @@ https://caiovalle.github.io/ImobRJ/
 C:\Projetos\ITBI Git\
 ├─ ImobRJ\                        <- este repositório (branch main)
 │  ├─ public\                     <- site publicado
-│  │  ├─ index.html, app.js, calc.js, transacoes.js, combo.js
+│  │  ├─ index.html, app.js, calc.js, transacoes.js, anuncios.js, combo.js
 │  │  ├─ dados.json, meta.json    <- agregados por rua/mês (gerar_dados_agregados.py)
 │  │  ├─ medianas.json            <- medianas de R$/m² por bairro (gerar_dados_agregados.py)
 │  │  ├─ indices.json             <- IPCA, CDI, TR e Selic (atualizar_indices.py)
