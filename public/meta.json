@@ -1,6 +1,9 @@
 {
-  "atualizado_em": "2026-11-03",
-  "registros": 53535,
-  "ultimo_periodo": "2026-08",
-  "fonte": "https://www.data.rio/datasets/5e4dda4d33f44b1eb9246559b281d1b8_8/about"
+  "atualizado_em": "2026-11-06",
+  "registros": 273707,
+  "ultimo_periodo": "2026-09",
+  "primeiro_periodo": "2011-07",
+  "transacoes_usadas": 593940,
+  "origem": "fazenda_por_imovel",
+  "fonte": "https://fazenda.prefeitura.rio/itbi-valores-medios-por-m2-de-transacoes-imobiliarias-por-trecho-de-logradouro/"
 }
