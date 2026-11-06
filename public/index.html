@@ -106,7 +106,7 @@ tailwind.config = { theme: { extend: {
       <section id="tab-overview" class="tab space-y-6">
         <div id="kpis" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"></div>
         <div class="grid lg:grid-cols-3 gap-6">
-          <div class="card lg:col-span-2"><h3 class="font-bold mb-3">Preço médio por m² ao longo do tempo</h3><div class="chart-box"><canvas id="cPreco"></canvas></div></div>
+          <div class="card lg:col-span-2"><h3 id="tPreco" class="font-bold mb-3">Preço mediano por m² ao longo do tempo</h3><div class="chart-box"><canvas id="cPreco"></canvas></div></div>
           <div class="card"><h3 class="font-bold mb-3">Tipologias</h3><div class="chart-box"><canvas id="cTip"></canvas></div></div>
         </div>
         <div class="grid lg:grid-cols-3 gap-6">
@@ -133,7 +133,7 @@ tailwind.config = { theme: { extend: {
         </div>
         <div id="cmpBanner"></div>
         <div class="card"><h3 class="font-bold mb-3">Comparador de mercado</h3><div class="chart-box" style="height:380px"><canvas id="cCmp"></canvas></div></div>
-        <div class="card overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>R$/m² (12m)</th><th>Valor médio</th><th>Transações (12m)</th><th>Var. 12m</th><th>vs. Cidade</th></tr></thead><tbody id="cmpTable"></tbody></table></div>
+        <div class="card overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>R$/m² mediano (12m)</th><th>Valor médio</th><th>Transações (12m)</th><th>Var. 12m</th><th>vs. Cidade</th></tr></thead><tbody id="cmpTable"></tbody></table></div>
         <div id="idxCards" class="space-y-6"></div>
       </section>
 
@@ -240,8 +240,8 @@ tailwind.config = { theme: { extend: {
           </div>
           <div class="card"><h3 class="font-bold mb-3">Como calculamos</h3>
             <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
-              <li><b>Preço/m² e valor médio:</b> médias <b>ponderadas pelo número de transações</b> de cada registro.</li>
-              <li><b>Variação 12m:</b> média dos últimos 12 meses contra a média dos 12 meses anteriores (nominal, em R$).</li>
+              <li><b>Preço/m²:</b> <b>mediana</b> do R$/m² das transações (metade vendeu acima, metade abaixo), calculada a partir de cada venda. Não é distorcida por poucas vendas muito caras. Períodos com menos de 5 vendas ficam em branco. Para uma <b>rua isolada</b>, usa-se a média ponderada pelo número de transações. <b>Valor e área</b> continuam sendo médias.</li>
+              <li><b>Variação 12m:</b> mediana do R$/m² nos últimos 12 meses contra a dos 12 meses anteriores (nominal, em R$).</li>
               <li><b>Tendência e projeção:</b> regressão linear simples sobre os períodos com dados. É extrapolação estatística, não previsão. O R² mede só o ajuste da reta.</li>
               <li><b>Comparação com IPCA e CDI:</b> o preço/m² vira índice base 100 no primeiro período; IPCA e CDI são acumulados mês a mês (produto de 1 + taxa) a partir do mesmo ponto. Nas janelas de 12 meses, os índices são alinhados ao ponto médio de cada janela.</li>
               <li><b>Variação real:</b> (1 + variação nominal) ÷ (1 + IPCA no mesmo intervalo) − 1.</li>
@@ -253,7 +253,7 @@ tailwind.config = { theme: { extend: {
         <div class="card"><h3 class="font-bold mb-3">Limitações importantes</h3>
           <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
             <li><b>Aba Transações – o que ela é e o que não é.</b> Mostra o valor <b>declarado na guia de ITBI</b>, com rua, número e complemento (apartamento) como publicados pela Prefeitura. A fonte não traz o dia da venda nem o tipo de transação (compra e venda, cessão etc.), então nem toda linha é necessariamente uma compra e venda comum. O complemento é texto livre, sem padrão. Terrenos, linhas com área ou valor inválidos e duplicatas ficam de fora; vendas parciais e R$/m² fora de R$ 500–200.000 aparecem marcadas e não entram nas estatísticas. A área vem arredondada em m² inteiros.</li>
-            <li><b>Média não é mediana.</b> As abas Visão geral, Comparador e Tendência usam uma fonte já agregada (média por rua e mês): não calculam mediana nem dispersão, e uma rua com poucas vendas pode ter média distorcida por um imóvel atípico. A aba <b>Transações</b>, que usa dados por imóvel, mostra mediana e percentis 25 e 75.</li>
+            <li><b>Mediana do bairro, média da rua.</b> Bairro e cidade usam a mediana real das vendas. Uma rua isolada usa a média, que pode ser distorcida por um imóvel atípico. A aba <b>Transações</b> mostra também os percentis 25 e 75.</li>
             <li><b>Não é um índice de preços puro.</b> O R$/m² médio de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
             <li><b>Preço de ITBI não é necessariamente o preço efetivamente pago, nem o valor atual de mercado.</b> Há defasagem de publicação: a tabela omite o mês mais recente.</li>
             <li><b>O volume varia muito entre regiões.</b> Ruas e bairros com poucas transações geram séries instáveis; veja sempre o número de transações.</li>
@@ -288,7 +288,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=abas2"></script>
+<script src="app.js?v=mediana3"></script>
 <script src="transacoes.js"></script>
 <script src="combo.js"></script>
 </body>
