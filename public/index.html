@@ -39,6 +39,7 @@ tailwind.config = { theme: { extend: {
       <button data-tab="overview" class="tab-btn active">Visão geral</button>
       <button data-tab="compare" class="tab-btn">Comparador</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
+      <button data-tab="tx" class="tab-btn">Transações</button>
       <button data-tab="history" class="tab-btn">Histórico</button>
       <button data-tab="method" class="tab-btn">Dados e metodologia</button>
     </nav>
@@ -147,6 +148,40 @@ tailwind.config = { theme: { extend: {
           <ul id="histList" class="divide-y"></ul></div>
       </section>
 
+      <!-- TRANSAÇÕES POR IMÓVEL -->
+      <section id="tab-tx" class="tab hidden space-y-6">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Transações por imóvel</h2>
+          <p class="text-gray-600 mt-2 max-w-3xl">Vendas registradas no ITBI da Prefeitura, uma linha por transação, com rua, número e complemento (apartamento). O valor é o <b>declarado na guia</b>; não é preço anunciado nem avaliação profissional. A fonte informa só mês e ano.</p>
+        </div>
+        <div id="txControles" class="card space-y-3 text-sm">
+          <div class="flex flex-wrap gap-3">
+            <label class="text-xs text-gray-500">Bairro<br><select id="txBairro" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
+            <label class="text-xs text-gray-500">Rua<br><select id="txRua" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white max-w-[16rem]"><option value="">Todas as ruas</option></select></label>
+            <label class="text-xs text-gray-500">Tipo<br><select id="txTip" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="">Todos os tipos</option></select></label>
+            <label class="text-xs text-gray-500">De<br><select id="txDe" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
+            <label class="text-xs text-gray-500">Até<br><select id="txAte" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
+          </div>
+          <div class="flex flex-wrap gap-3 items-end">
+            <label class="text-xs text-gray-500">Nº ou apartamento<br><input id="txBusca" type="text" placeholder="ex.: 302 ou 101" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-44"></label>
+            <label class="text-xs text-gray-500">Valor mín. (R$)<br><input id="txVmin" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-32"></label>
+            <label class="text-xs text-gray-500">Valor máx. (R$)<br><input id="txVmax" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-32"></label>
+            <label class="text-xs text-gray-500">Área mín. (m²)<br><input id="txAmin" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-24"></label>
+            <label class="text-xs text-gray-500">Área máx. (m²)<br><input id="txAmax" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-24"></label>
+            <label id="txOrdemBox" class="text-xs text-gray-500">Ordenar por<br><select id="txOrdem" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="data">Mais recentes</option><option value="valor">Maior valor</option><option value="m2">Maior R$/m²</option></select></label>
+            <label class="inline-flex items-center gap-2 pb-2 cursor-pointer"><input type="checkbox" id="txPredio" class="accent-[#ef4b3f]"> Agrupar por prédio (rua + número)</label>
+          </div>
+        </div>
+        <div id="txKpis" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
+        <div id="txConteudo"></div>
+        <div id="txPagina" class="hidden flex items-center justify-center gap-4 text-sm">
+          <button id="txPrev" class="border rounded-full px-4 py-1.5 bg-white disabled:opacity-40">Anterior</button>
+          <span id="txPageInfo" class="text-gray-500"></span>
+          <button id="txNext" class="border rounded-full px-4 py-1.5 bg-white disabled:opacity-40">Próxima</button>
+        </div>
+        <p class="text-xs text-gray-500">Estatísticas (mediana e percentis) usam só vendas integrais com R$/m² plausível; vendas parciais e valores atípicos aparecem na lista, marcados. A fonte não distingue o tipo de transação (compra e venda, cessão etc.). Detalhes em “Dados e metodologia”.</p>
+      </section>
+
       <!-- DADOS E METODOLOGIA -->
       <section id="tab-method" class="tab hidden space-y-6">
         <div>
@@ -170,6 +205,10 @@ tailwind.config = { theme: { extend: {
                 <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda, publicado no portal Data.Rio</td>
                 <td class="pr-4">Preços, áreas, volume de transações, tipologias</td>
                 <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/datasets/5e4dda4d33f44b1eb9246559b281d1b8_8/about" target="_blank" rel="noopener">Página do dataset</a>. Município do Rio de Janeiro. Base desde 2010; o painel usa de 2018 em diante. Formato: serviço ArcGIS REST / CSV. <span id="mItbi" class="text-gray-500"></span></td></tr>
+              <tr><td class="py-3 pr-4 font-medium">ITBI – transações por imóvel (aba “Transações”)</td>
+                <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda</td>
+                <td class="pr-4">Uma linha por transação: rua, número, complemento, tipologia, área, valor declarado, mês e ano</td>
+                <td>Planilhas publicadas no site da Fazenda (2011–2018, 2019–2024 e 2025 em diante). Município do Rio. Não informa o dia da venda nem o tipo de transação. <span id="mTx" class="text-gray-500"></span></td></tr>
               <tr><td class="py-3 pr-4 font-medium">IPCA – variação mensal (série SGS 433)</td>
                 <td class="pr-4">IBGE (índice); Banco Central do Brasil (divulgação via SGS)</td>
                 <td class="pr-4">Inflação oficial, para comparar e deflacionar preços</td>
@@ -189,7 +228,7 @@ tailwind.config = { theme: { extend: {
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="card"><h3 class="font-bold mb-3">Como os dados do ITBI são tratados</h3>
             <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
-              <li><b>Cada registro é uma média</b>: o dataset traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
+              <li><b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
               <li>Mantemos só a transação principal <b>“Compra e venda”</b> e anos a partir de 2018.</li>
               <li>Descartamos registros sem área ou valor, e com R$/m² fora de <b>R$ 500 a R$ 200.000</b>, para eliminar erros de digitação. O limite superior é uma estimativa nossa: os dados só provam que o erro está entre R$ 142 mil e R$ 379 mil/m².</li>
               <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. Textos são padronizados (maiúsculas/minúsculas); logradouros abreviados da fonte são expandidos só para a busca.</li>
@@ -210,7 +249,8 @@ tailwind.config = { theme: { extend: {
 
         <div class="card"><h3 class="font-bold mb-3">Limitações importantes</h3>
           <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
-            <li><b>Média não é mediana.</b> Como a fonte já vem agregada, não conseguimos calcular mediana, percentis ou dispersão das transações individuais. Uma rua com poucas vendas pode ter média distorcida por um imóvel atípico.</li>
+            <li><b>Aba Transações – o que ela é e o que não é.</b> Mostra o valor <b>declarado na guia de ITBI</b>, com rua, número e complemento (apartamento) como publicados pela Prefeitura. A fonte não traz o dia da venda nem o tipo de transação (compra e venda, cessão etc.), então nem toda linha é necessariamente uma compra e venda comum. O complemento é texto livre, sem padrão. Terrenos, linhas com área ou valor inválidos e duplicatas ficam de fora; vendas parciais e R$/m² fora de R$ 500–200.000 aparecem marcadas e não entram nas estatísticas. A área vem arredondada em m² inteiros.</li>
+            <li><b>Média não é mediana.</b> As abas Visão geral, Comparador e Tendência usam uma fonte já agregada (média por rua e mês): não calculam mediana nem dispersão, e uma rua com poucas vendas pode ter média distorcida por um imóvel atípico. A aba <b>Transações</b>, que usa dados por imóvel, mostra mediana e percentis 25 e 75.</li>
             <li><b>Não é um índice de preços puro.</b> O R$/m² médio de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
             <li><b>Preço de ITBI não é necessariamente o preço efetivamente pago, nem o valor atual de mercado.</b> Há defasagem de publicação: a tabela omite o mês mais recente.</li>
             <li><b>O volume varia muito entre regiões.</b> Ruas e bairros com poucas transações geram séries instáveis; veja sempre o número de transações.</li>
@@ -246,5 +286,6 @@ tailwind.config = { theme: { extend: {
 </div>
 
 <script src="app.js"></script>
+<script src="transacoes.js"></script>
 </body>
 </html>

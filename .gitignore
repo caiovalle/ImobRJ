@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 *.csv
 .venv/
+
+# Base completa por imóvel (contém complemento/apartamento): fica só no computador, nunca no GitHub
+*.xlsx
+itbi_limpo.csv
+relatorio_qualidade.txt
+saida/
+planilhas_sefaz/

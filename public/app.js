@@ -163,13 +163,15 @@ function render() {
   B = baseRows();
   const sc = inScope(B);
   const has = sc.length > 0;
-  const solo = TAB === 'history' || TAB === 'method';   // abas que não dependem de local/filtros
+  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
-  $('scopeHead').classList.toggle('hidden', TAB === 'method'); $('filtersBar').classList.toggle('hidden', TAB === 'method');
+  const semBarra = TAB === 'method' || TAB === 'tx';
+  $('scopeHead').classList.toggle('hidden', semBarra); $('filtersBar').classList.toggle('hidden', semBarra);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && !solo)));
   $('scopeTitle').textContent = S.label;
   if (TAB === 'history') return renderHistory();
   if (TAB === 'method') return renderMethodAuto();
+  if (TAB === 'tx') return renderTx();
   if (!has) return;
   $('scopeSub').innerHTML = `${num(sc.length)} registros · ${F.de}–${F.ate}` + (S.cep ? ` · <span class="text-brand-600 font-medium">CEP ${S.cep}</span>` : '') + (S.ceps?.length ? ' · CEPs: ' + S.ceps.map(c => `<span class="bg-brand-100 text-brand-900 rounded px-1.5 py-0.5 text-xs">${c}</span>`).join(' ') : '');
   ({ overview: renderOverview, compare: renderCompare, trend: renderTrend })[TAB](sc);
@@ -457,6 +459,7 @@ function bindEvents() {
 }
 function renderMethodAuto() {
   const el = id => $(id); if (!el('mItbi')) return;
+  fetch('transacoes/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) el('mTx').textContent = `Neste painel: ${num(j.total)} transações, ${j.ano_min}–${j.ano_max}, ${num(j.bairros.length)} bairros.`; else el('mTx').textContent = 'Ainda não publicada.'; }).catch(() => {});
   if (ROWS.length) { const ts = ROWS.map(r => r.t), a = Math.min(...ts), b = Math.max(...ts);
     el('mItbi').textContent = `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
   for (const n of ['ipca', 'cdi']) el('m' + n[0].toUpperCase() + n.slice(1)).textContent = IDX

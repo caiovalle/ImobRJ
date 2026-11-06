@@ -58,6 +58,17 @@ python scripts/atualizar_dados.py --csv ITBI.csv  # ITBI a partir de um CSV baix
 Depois, *Commit* no VS Code. Se `indices.json` não existir, o site tenta ler o Banco Central direto
 do navegador (não verificado em produção); se também falhar, os recursos de IPCA/CDI ficam desativados.
 
+## Base de transações por imóvel (aba "Transações")
+Fonte: planilhas da Fazenda do Rio (uma linha por transação). A base completa, com apartamento, **nunca vai para o GitHub**
+(o `.gitignore` bloqueia `*.xlsx`, `itbi_limpo.csv` e a pasta `saida/`). Só os arquivos por bairro vão para `public/transacoes/`.
+```bash
+pip install openpyxl
+python scripts/processar_itbi.py          # lê as planilhas em C:\Projetos\ITBI Git\planilhas_sefaz e gera saida\itbi_limpo.csv + relatorio_qualidade.txt
+python scripts/gerar_transacoes_site.py   # lê saida\itbi_limpo.csv e gera public/transacoes/
+```
+Pastas esperadas: projeto em `C:\Projetos\ITBI Git\ImobRJ` e planilhas em `C:\Projetos\ITBI Git\planilhas_sefaz` (fora do projeto, portanto fora do Git).
+Rode os comandos com o terminal do VS Code aberto na pasta `ImobRJ`. Depois, *Commit* no VS Code. Leia `relatorio_qualidade.txt` antes de publicar.
+
 ## Rodando localmente
 ```bash
 python scripts/atualizar_dados.py                 # baixa a versão mais recente
