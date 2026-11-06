@@ -140,9 +140,20 @@ tailwind.config = { theme: { extend: {
 
       <!-- TENDÊNCIA -->
       <section id="tab-trend" class="tab hidden space-y-6">
+        <div class="card flex flex-wrap items-end gap-x-4 gap-y-2 text-sm">
+          <div><label for="tArea" class="text-xs font-semibold text-gray-600">Área do imóvel</label><div class="flex items-center gap-2 mt-1"><input id="tArea" type="number" min="10" step="1" value="70" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
+          <div class="flex gap-2"><button class="pill tUn on" data-u="m2">R$/m²</button><button class="pill tUn" data-u="imovel">R$ do imóvel</button></div>
+          <div id="tAreaInfo" class="basis-full text-sm"></div>
+          <p class="basis-full text-[11px] text-gray-400">A mesma área é usada na aba “Comprar ou alugar”. R$/m² × área é uma <b>estimativa de referência</b>, não uma avaliação: padrão, andar, vista e conservação mudam o preço.</p>
+        </div>
         <div id="trendKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
-        <div class="card"><h3 class="font-bold mb-1">Tendência e projeção de preço/m²</h3><p class="text-xs text-gray-500 mb-3">Regressão linear sobre os períodos com dados; projeção de 12 meses. É uma extrapolação estatística, não uma previsão garantida.</p><div class="chart-box" style="height:380px"><canvas id="cTrend"></canvas></div></div>
-        <div class="card"><h3 class="font-bold mb-3">Sazonalidade (média de transações por mês)</h3><div class="chart-box" style="height:240px"><canvas id="cSaz"></canvas></div></div>
+        <div class="card"><div class="flex items-center justify-between gap-2 mb-1"><h3 id="tTrendTit" class="font-bold">Tendência e projeção de preço/m²</h3><button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="hTrend" aria-label="Como ler este gráfico?"><i class="fa-regular fa-circle-question"></i></button></div>
+          <p class="text-xs text-gray-500 mb-3">Regressão linear sobre os períodos com dados; projeção de 12 meses. É uma extrapolação estatística, não uma previsão garantida.</p>
+          <p id="hTrend" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mb-3 leading-relaxed"><b>Linha vermelha (R$/m²)</b>: o preço por m² observado em cada período nas transações do ITBI — mediana no bairro e na cidade, média ponderada na rua (poucas vendas). Aqui “real” quer dizer <b>dado observado</b>, em reais da época, sem descontar a inflação. <b>Média móvel (3)</b>: média dos 3 últimos períodos, suaviza oscilações. <b>Tendência linear</b>: a reta que melhor se ajusta aos pontos. <b>Projeção</b>: a mesma reta prolongada por mais 12 meses; é estatística, não previsão nem avaliação profissional.</p>
+          <div class="chart-box" style="height:380px"><canvas id="cTrend"></canvas></div></div>
+        <div class="card"><div class="flex items-center justify-between gap-2 mb-3"><h3 class="font-bold">Sazonalidade (média de transações por mês)</h3><button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="hSaz" aria-label="Como ler este gráfico?"><i class="fa-regular fa-circle-question"></i></button></div>
+          <p id="hSaz" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mb-3 leading-relaxed">Para cada mês do ano, a média de transações registradas no ITBI nos anos do período selecionado. Mostra em que meses o mercado costuma ter mais ou menos vendas (por exemplo, dezembro e começo de ano). Fala de <b>volume</b>, não de preço.</p>
+          <div class="chart-box" style="height:240px"><canvas id="cSaz"></canvas></div></div>
       </section>
 
       <!-- HISTÓRICO -->
@@ -293,8 +304,8 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=calc5"></script>
-<script src="calc.js?v=calc11"></script>
+<script src="app.js?v=calc12"></script>
+<script src="calc.js?v=calc12"></script>
 <script src="transacoes.js"></script>
 <script src="combo.js"></script>
 </body>

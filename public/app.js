@@ -1,4 +1,4 @@
-// ImobRJ app.js — versão calculadora v5
+// ImobRJ app.js — versão calc12 (tendência com explicações, inflação e metragem)
 /* ImobRJ – lógica do dashboard. Lê dados.json (campos: bairro, logradouro, area, valor, valor_m2, transacoes, tipo, tipologia, ano, mes) */
 
 // ---------- Utilidades ----------
@@ -19,6 +19,10 @@ const brl = v => v == null ? '—' : v.toLocaleString('pt-BR', { style:'currency
 const num = v => v == null ? '—' : Math.round(v).toLocaleString('pt-BR');
 const pct = v => { if (v == null) return '—'; const t = v.toFixed(1); return (v > 0 && t !== '0.0' ? '+' : '') + (t === '-0.0' ? '0.0' : t).replace('.', ',') + '%'; };
 const pctColor = v => v == null ? 'text-gray-500' : v > 0 ? 'text-emerald-600' : v < 0 ? 'text-red-600' : 'text-gray-500';
+// área do imóvel (m²) compartilhada entre as abas Tendência e Calculadora
+const AREA_K = 'imobrj_area';
+const areaGet = () => { let a = NaN; try { a = +localStorage.getItem(AREA_K); } catch (e) { a = areaGet.mem; } return a >= 10 ? a : (areaGet.mem >= 10 ? areaGet.mem : 70); };
+const areaSet = a => { a = +a; if (!(a >= 10)) return; areaGet.mem = a; try { localStorage.setItem(AREA_K, String(a)); } catch (e) {} };
 const ANO0 = 2010;   // mês t=0 é jan/2010; a base por imóvel começa em jul/2011 (e a do Data.Rio em 2010)
 const minmax = (arr, f = x => x) => { let a = Infinity, b = -Infinity; for (const x of arr) { const v = f(x); if (v < a) a = v; if (v > b) b = v; } return [a, b]; };   // seguro p/ centenas de milhares de itens (Math.max(...lista) estoura)
 const COLORS = ['#ef4b3f', '#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#94a3b8'];
@@ -369,26 +373,70 @@ function renderIdxTables(mercados) {
     <p class="text-xs text-gray-500 px-1">${aviso}</p>`;
 }
 
+let TREND_UN = 'm2';                 // gráfico da tendência em 'm2' (R$/m²) ou 'imovel' (R$ do imóvel com a área escolhida)
+const TREND_HELP = new Set();         // explicações abertas (continuam abertas ao redesenhar)
+const TREND_AJUDA = {
+  hDir: 'Leitura da inclinação da linha de tendência do R$/m² (bairro e cidade: mediana; rua: média). <b>Alta</b> se a tendência sobe mais de 2% ao ano, <b>Queda</b> se cai mais de 2% ao ano; entre os dois, <b>Estável</b>.',
+  hVar: 'Quanto a linha de tendência sobe (ou cai) por ano em relação ao valor atual dela. É uma aproximação linear, em reais correntes (nominal). Comparamos com o IPCA do mesmo período: a <b>variação real</b> = (1 + nominal) ÷ (1 + IPCA) − 1 mostra o quanto o preço subiu <b>acima</b> (ou abaixo) do custo de vida; positiva = ganho de poder de compra.',
+  hProj: 'Onde a linha de tendência estaria daqui a cerca de 12 meses se o ritmo do período continuar. É uma <b>extrapolação estatística</b>, não uma previsão nem uma avaliação profissional.',
+  hR2: 'Quanto da variação dos preços a linha de tendência explica. Perto de 100% = tendência clara e regular; baixo = série que oscila muito: desconfie da direção e da projeção.'
+};
+const kTrendT = k => F.gran === 3 ? 3 * k + 1 : k;   // mês representativo de cada período do eixo
+// IPCA anualizado entre os meses t0 e t1 (recortado ao que o indices.json cobre); null se < 12 meses
+function ipcaAA(t0, t1) {
+  if (!IDX?.ipca) return null;
+  const a = Math.max(t0, IDX.ini ?? t0), b = Math.min(t1, IDX.fim.ipca);
+  if (b - a < 12) return null;
+  const f = fator('ipca', a, b); return f == null ? null : { aa: (Math.pow(f, 12 / (b - a)) - 1) * 100, t0: a, t1: b };
+}
 function renderTrend(sc) {
   const axis = makeAxis(B), s = series(sc, axis, medScope()), y = s.map(p => p?.m2 ?? null), reg = regress(y);
   const H = Math.round(perYear()), ext = Array.from({ length: H }, (_, i) => axis.at(-1) + i + 1), labels = [...axis, ...ext].map(keyLabel);
+  const area = areaGet(), med = usaMediana();
+  if (+$('tArea').value !== area && document.activeElement !== $('tArea')) $('tArea').value = area;
   if (!reg) {
     $('trendKpis').innerHTML = `<div class="card col-span-full text-gray-500">Poucos períodos com dados (mín. 6) para calcular tendência. Tente agrupar por <b>Trimestral</b> ou ampliar o intervalo/local.</div>`;
+    $('tAreaInfo').innerHTML = '';
     Object.values(charts).forEach(c => c.destroy()); return;
   }
   const last = y.length - 1, line = labels.map((_, i) => reg.icpt + reg.slope * i);
   const fitLast = line[last], annual = reg.slope * perYear() / fitLast * 100, proj = line[last + H];
   const proje = labels.map((_, i) => i >= last ? line[i] : null); proje[last] = y.filter(v => v != null).at(-1) === y[last] ? y[last] : line[last];
   const dir = annual > 2 ? ['Alta', 'text-emerald-600', 'fa-arrow-trend-up'] : annual < -2 ? ['Queda', 'text-red-600', 'fa-arrow-trend-down'] : ['Estável', 'text-gray-600', 'fa-minus'];
-  const k = (l, v, c = '') => `<div class="card"><div class="text-xs text-gray-500 mb-1">${l}</div><div class="text-xl font-bold ${c}">${v}</div></div>`;
-  $('trendKpis').innerHTML = k('Direção', `<i class="fa-solid ${dir[2]} mr-1"></i>${dir[0]}`, dir[1]) + k('Variação anual estimada', pct(annual), pctColor(annual)) +
-    k(`Projeção p/ ${keyLabel(ext.at(-1))}`, brl(proj)) + k('Confiança (R²)', (reg.r2 * 100).toFixed(0) + '%');
+  // inflação na mesma janela da série (1º ao último período com dado) e nos últimos 12 meses
+  const iDados = y.map((v, i) => v == null ? null : i).filter(i => i != null);
+  const ip = ipcaAA(kTrendT(axis[iDados[0]]), kTrendT(axis[iDados.at(-1)]));
+  const ip12 = IDX?.fim?.ipca != null ? fatorPct(fator('ipca', IDX.fim.ipca - 12, IDX.fim.ipca)) : null;
+  const f1 = v => v.toFixed(1).replace('.', ',');
+  let varSub;
+  if (ip == null) varSub = '<span class="text-gray-400">nominal · índice de inflação indisponível</span>';
+  else {
+    const real = ((1 + annual / 100) / (1 + ip.aa / 100) - 1) * 100;
+    const txt = Math.abs(real) < 0.5 ? '<span class="text-gray-600 font-semibold">em linha com a inflação</span>'
+      : `<span class="${real > 0 ? 'text-emerald-600' : 'text-red-600'} font-semibold">${pct(real)} ${real > 0 ? 'acima' : 'abaixo'} da inflação</span>`;
+    varSub = `nominal · IPCA ${f1(ip.aa)}% a.a. (${ymLabel(ip.t0)}–${ymLabel(ip.t1)})${ip12 != null ? ` · 12 meses: ${f1(ip12)}%` : ''}<br>${txt}`;
+  }
+  const k = (id, l, v, c = '', sub = '') => `<div class="card"><div class="flex items-start justify-between gap-1 text-xs text-gray-500 mb-1"><span>${l}</span>
+      <button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="${id}" aria-label="O que é ${l}?"><i class="fa-regular fa-circle-question"></i></button></div>
+      <div class="text-xl font-bold ${c}">${v}</div>${sub ? `<div class="text-[11px] text-gray-500 mt-1 leading-snug">${sub}</div>` : ''}
+      <p id="${id}" class="${TREND_HELP.has(id) ? '' : 'hidden'} text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed">${TREND_AJUDA[id]}</p></div>`;
+  const projLbl = keyLabel(ext.at(-1));
+  $('trendKpis').innerHTML = k('hDir', 'Direção', `<i class="fa-solid ${dir[2]} mr-1"></i>${dir[0]}`, dir[1], `${med ? 'mediana' : 'média'} do R$/m²`) +
+    k('hVar', 'Variação anual estimada', pct(annual) + ' a.a.', pctColor(annual), varSub) +
+    k('hProj', `Projeção p/ ${projLbl}`, brl(proj) + '/m²', '', `≈ ${brl(proj * area)} para ${num(area)} m²`) +
+    k('hR2', 'Confiança (R²)', (reg.r2 * 100).toFixed(0) + '%', '', reg.r2 >= 0.7 ? 'tendência clara' : reg.r2 >= 0.4 ? 'tendência moderada' : 'série oscilante');
+  $('tAreaInfo').innerHTML = `Imóvel de <b>${num(area)} m²</b>: valor estimado hoje ≈ <b>${brl(fitLast * area)}</b> (${brl(fitLast)}/m² na linha de tendência) · projeção p/ ${projLbl} ≈ <b>${brl(proj * area)}</b>` +
+    (med ? '' : ' <span class="text-amber-700">· na rua o R$/m² é média (poucas vendas), não mediana</span>');
+  const un = TREND_UN === 'imovel', mult = v => v == null ? null : un ? v * area : v;
+  $('tTrendTit').textContent = un ? `Tendência e projeção do valor de um imóvel de ${num(area)} m²` : 'Tendência e projeção de preço/m²';
+  const nomeSerie = (med ? 'R$/m² (mediana)' : 'R$/m² (média)') + (un ? ` × ${num(area)} m²` : '');
   mk('cTrend', { type: 'line', data: { labels, datasets: [
-    lineDs(usaMediana() ? 'R$/m² (mediana)' : 'R$/m² (média)', [...y, ...ext.map(() => null)], COLORS[0], { pointRadius: 2 }),
-    lineDs('Média móvel (3)', [...movAvg(y), ...ext.map(() => null)], '#14b8a6', { borderWidth: 1.5 }),
-    lineDs('Tendência linear', line.slice(0, last + 1).concat(ext.map(() => null)), '#64748b', { borderDash: [4, 4], borderWidth: 1.5 }),
-    lineDs('Projeção', proje, '#f59e0b', { borderDash: [8, 4] })] },
+    lineDs(nomeSerie, [...y, ...ext.map(() => null)].map(mult), COLORS[0], { pointRadius: 2 }),
+    lineDs('Média móvel (3)', [...movAvg(y), ...ext.map(() => null)].map(mult), '#14b8a6', { borderWidth: 1.5 }),
+    lineDs('Tendência linear', line.slice(0, last + 1).concat(ext.map(() => null)).map(mult), '#64748b', { borderDash: [4, 4], borderWidth: 1.5 }),
+    lineDs('Projeção', proje.map(mult), '#f59e0b', { borderDash: [8, 4] })] },
     options: { interaction: { mode: 'index', intersect: false }, scales: { y: yBRL } } });
+  for (const id of ['hTrend', 'hSaz']) $(id).classList.toggle('hidden', !TREND_HELP.has(id));
 
   const sm = Array(12).fill(0), yrs = Array.from({ length: 12 }, () => new Set());
   sc.forEach(r => { sm[r.mes - 1] += r.transacoes; yrs[r.mes - 1].add(r.ano); });
@@ -535,6 +583,14 @@ function bindEvents() {
     if (d) { const h = getHist(); h.splice(+d.dataset.d, 1); setHist(h); renderChips(); renderHistory(); }
   });
   $('btnClear').onclick = () => { setHist([]); renderChips(); renderHistory(); };
+  // aba Tendência: área compartilhada com a calculadora, unidade do gráfico e explicações (clique, funciona no celular)
+  $('tArea').value = areaGet();
+  $('tArea').addEventListener('input', () => { if (+$('tArea').value >= 10) { areaSet($('tArea').value); if (TAB === 'trend') render(); } });
+  $('tab-trend').addEventListener('click', e => {
+    const h = e.target.closest('.tHelp');
+    if (h) { const el = $(h.dataset.for); el.classList.toggle('hidden'); TREND_HELP[el.classList.contains('hidden') ? 'delete' : 'add'](h.dataset.for); return; }
+    const u = e.target.closest('.tUn'); if (u) { TREND_UN = u.dataset.u; document.querySelectorAll('.tUn').forEach(x => x.classList.toggle('on', x === u)); render(); }
+  });
 }
 function renderMethodAuto() {
   const el = id => $(id); if (!el('mItbi')) return;

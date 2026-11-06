@@ -55,7 +55,7 @@ C:\Projetos\ITBI Git\
 - Os scripts calculam as pastas a partir da própria localização (`Path(__file__)`); **não existe `caminhos.py`** e não é necessário.
 
 ### Publicação (GitHub Pages)
-- Netlify e o robô `atualizar-dados.yml` **foram removidos**.
+- O site é publicado **só pelo GitHub Pages**; o robô `atualizar-dados.yml` foi removido.
 - `pages.yml` usa `peaceiris/actions-gh-pages@v4` publicando `./public` na branch **`gh-pages`** (`force_orphan: true`). Em Settings → Pages, a fonte é **Deploy from a branch → gh-pages / (root)**.
 - A abordagem "GitHub Actions + deploy-pages" ficou presa em `deployment_queued`/timeout e foi abandonada.
 - O site só republica quando algo muda em `public/` (ou no próprio `pages.yml`); senão, rodar manualmente em Actions → Run workflow.
@@ -77,7 +77,7 @@ Notas:
 - Correção feita na linha da Selic em `atualizar_indices.py`: `ult = baixar(args.base.format(codigo=SELIC["codigo"]) + "/ultimos/1?formato=json")[-1]` (a versão anterior gerava URL 404).
 - A série da Selic do Banco Central traz a **data do próximo Copom** (aparecia como data futura). A calculadora mostra só "Selic atual".
 - `scripts/atualizar_dados.py` é da base antiga do Data.Rio (só ≥ 2018) e **sobrescreveria o `dados.json`**. Foi recomendado `git rm scripts/atualizar_dados.py`. **Confirmar se o Caio já apagou.**
-- **Pendente:** o `README.md` ainda fala de Netlify, robô semanal e `atualizar_dados.py`; reescrever com o fluxo acima.
+- `README.md` reescrito com o fluxo acima (GitHub Pages + pipeline das planilhas).
 
 ---
 
@@ -203,7 +203,7 @@ Arquivos a editar: `calc.js` (itens 1, 2, 3, 7), `app.js` (itens 4, 5, 6), `inde
 - Confirmar no celular: troca de abas **não volta mais ao banner**; calculadora legível numa coluna só.
 - Efeito conhecido do orçamento **automático**: marcar "comparar também financiando" muda o orçamento (vira a parcela) e portanto os números de à vista e aluguel; para comparar de forma estável, preencher o **Orçamento mensal**.
 - Premissas que mais pesam no resultado: **rendimento real** e **aluguel (% do valor)**. A rentabilidade de 6,14% é média nacional; conferir com anúncios do Rio.
-- Atualizar `README.md` e remover `scripts/atualizar_dados.py` (se ainda existir).
+- `scripts/atualizar_dados.py` já não existe no repositório; `README.md` atualizado.
 - Tailwind por CDN (aviso de não-produção) e `dados.json` de 10,6 MB: possíveis otimizações futuras.
 - Backlog já discutido: tratar a **nova divisão de bairros** (Barra Olímpica, Jabour, Lapa, Ilha de Guaratiba aparecem só em 2026, o que pode gerar queda falsa de volume nos bairros de origem em 2026); explicar o card "Variação real no período" na Visão geral; cenários salvos só existem no navegador (não sincronizam entre PC e celular).
 - Aviso padrão da calculadora (manter): **simulação educativa, não é recomendação**; confirmar taxas, CET e condições com o banco.
