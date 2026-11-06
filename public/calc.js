@@ -21,8 +21,12 @@ const CALC_REF = {
   corretagem: 6,       // comissão de venda (estimativa usual; negociável)
   manutencao: 0.5      // manutenção e reformas, % a.a. do valor do imóvel (estimativa)
 };
-// Versão calc8
+// Versão calc11
 const f2 = n => (Math.round(n * 100) / 100).toString().replace('.', ',');
+const CAMPOS_MOEDA = new Set(['cDinheiro','cOrcamento','cValor','cFgts','cSeguros','cTarifa','cAluguel','cAmortAnual']);
+const parseMoeda = v => { const d = String(v ?? '').replace(/\D/g, ''); return d ? +d : 0; };
+const formatMoeda = v => { const n = Math.max(0, Math.round(+v || 0)); return n ? n.toLocaleString('pt-BR') : (v === '' ? '' : '0'); };
+const valorEstado = (st, id) => CAMPOS_MOEDA.has(id) ? parseMoeda(st.campos[id]) : (parseFloat(String(st.campos[id] ?? '').replace(',', '.')) || 0);
 
 const CALC_CAMPOS = [
   // id, rótulo, unidade, passo, ajuda
@@ -33,7 +37,8 @@ const CALC_CAMPOS = [
   ['cCartorio', 'Escritura e registro', '%', 0.1, 'Custos de cartório (escritura e registro no RGI). Varia com o valor; cerca de 1% é uma estimativa. No 1º imóvel financiado pelo SFH há desconto de 50% no registro.'],
   ['cValoriz', 'Valorização do imóvel', '% a.a.', 0.1, 'Quanto o imóvel sobe por ano, em R$ correntes. A sugestão é a inflação (valorização real zero). Ao lado aparece a variação histórica da mediana do bairro nos dados do ImobRJ.'],
   ['cManut', 'Manutenção', '% a.a. do valor', 0.1, 'Reformas, consertos e cotas extras de condomínio que ficam com o <b>dono</b> (quem aluga não paga). 0,5% a 1% do valor por ano é uma estimativa comum; imóveis antigos gastam mais.'],
-  ['cEntrada', 'Entrada', '%', 1, 'Parte paga à vista no financiamento. Os bancos costumam financiar até 80% do valor, ou seja, entrada mínima de 20%.'],
+  ['cEntrada', 'Entrada', '%', 1, 'Parte paga à vista no financiamento. O valor em reais correspondente aparece logo abaixo. Os bancos costumam financiar até 80% do valor, ou seja, entrada mínima de 20%.'],
+  ['cAmortAnual', 'Amortização extra anual', 'R$/ano', 1000, 'Valor adicional pago uma vez por ano diretamente no saldo devedor. A simulação usa a opção <b>reduzir prazo</b>: mantém a lógica da prestação e quita o contrato antes, reduzindo os juros. Digite 0 para não amortizar.'],
   ['cFgts', 'FGTS usado', 'R$', 1000, '<b>FGTS</b> que você pode usar na compra (entrada ou valor à vista), se tiver direito. Se não usar, ele fica na conta rendendo TR + 3% a.a. (mais a distribuição de lucros, que não entra aqui).'],
   ['cPrazo', 'Prazo do financiamento', 'anos', 1, 'Até 35 anos (420 meses) nos principais bancos. Prazo maior reduz a parcela, mas aumenta o total de juros.'],
   ['cJuros', 'Juros do financiamento', '% a.a. + TR', 0.01, 'Taxa nominal anual do contrato, somada à TR. Referência: ' + CALC_REF.jurosFaixa + ' (' + CALC_REF.data + ').'],
@@ -77,12 +82,12 @@ function calcBairroInfo(nb) {
 }
 
 function calcMontar() {
-  const campo = ([id, rot, un, passo, ajuda]) => `<div>
+  const campo = ([id, rot, un, passo, ajuda]) => { const moeda = CAMPOS_MOEDA.has(id); return `<div>
       <div class="flex items-center justify-between gap-2"><label for="${id}" class="text-xs font-semibold text-gray-600">${rot}</label>
         <button type="button" class="cHelp text-gray-400 hover:text-brand-600" data-for="${id}" aria-label="O que é ${rot}?"><i class="fa-regular fa-circle-question"></i></button></div>
-      <div class="mt-1 flex items-center gap-2"><input id="${id}" type="number" inputmode="decimal" step="${passo}" min="0" class="sel w-full text-right"><span class="text-xs text-gray-500 whitespace-nowrap w-20">${un}</span></div>
+      <div class="mt-1 flex items-center gap-2"><input id="${id}" type="${moeda ? 'text' : 'number'}" inputmode="${moeda ? 'numeric' : 'decimal'}" ${moeda ? 'data-money="1"' : `step="${passo}" min="0"`} class="sel w-full text-right"><span class="text-xs text-gray-500 whitespace-nowrap w-20">${un}</span></div>
       <p id="${id}Sug" class="text-[11px] text-gray-400 mt-0.5"></p>
-      <p id="${id}Help" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-1 leading-relaxed">${ajuda}</p></div>`;
+      <p id="${id}Help" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-1 leading-relaxed">${ajuda}</p></div>`; }; 
   const chk = (id, txt, on = true) => `<label class="sm:col-span-2 flex items-center gap-2 text-xs text-gray-700"><input id="${id}" type="checkbox" ${on ? 'checked' : ''} class="accent-[#ef4b3f]">${txt}</label>`;
   const grupo = (tit, ids, extra = '') => `<div class="card"><h3 class="font-bold mb-3">${tit}</h3><div class="grid sm:grid-cols-2 gap-4">${CALC_CAMPOS.filter(c => ids.includes(c[0])).map(campo).join('')}${extra}</div></div>`;
   $('tab-calc').innerHTML = `
@@ -99,7 +104,8 @@ function calcMontar() {
     <div class="grid lg:grid-cols-2 gap-6">
       ${grupo('Seu dinheiro', ['cDinheiro', 'cFgts', 'cOrcamento'])}
     ${grupo('Imóvel e compra', ['cValor', 'cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
-      ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa'], chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
+      ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
+      <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
       ${grupo('Aluguel', ['cAluguel', 'cReajAluguel'], chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
       ${grupo('Investimento', ['cRendReal', 'cIR', 'cIpca'])}
       ${grupo('Comparação', ['cHoriz', 'cCorret', 'cIRGanho'], chk('cVender', 'Contar o imóvel como se fosse vendido no fim (desconta corretagem e IR)'))}
@@ -127,9 +133,9 @@ function calcMontar() {
       <h3 class="font-bold text-sm text-ink">Como a conta é feita</h3>
       <p><b>Parte do seu dinheiro.</b> Se ele cobre imóvel + ITBI + cartório (com o FGTS), a comparação é <b>comprar à vista × alugar e investir</b> (financiar é opcional). Se não cobre, é <b>financiar × alugar e investir</b>; se não cobre nem a entrada e os custos, o financiado aparece marcado como “falta dinheiro”. O que sobrar no início é investido.</p>
       <p><b>Mesmo orçamento mensal.</b> Todo mês cada caminho tem o mesmo orçamento: o informado (corrigido pela inflação) ou, se vazio, o maior gasto entre os caminhos (parcela + seguros + manutenção, manutenção, ou aluguel). O que sobra é investido à taxa real + IPCA; se faltar, sai dos investimentos.</p>
-      <p><b>À vista:</b> paga imóvel e custos e investe a sobra do orçamento depois da manutenção. <b>Financiado:</b> paga entrada (com FGTS), ITBI, cartório e tarifas; no fim desconta o saldo devedor. <b>Alugar:</b> investe todo o dinheiro e a sobra depois do aluguel; o FGTS continua na conta.</p>
+      <p><b>À vista:</b> paga imóvel e custos e investe a sobra do orçamento depois da manutenção. <b>Financiado:</b> paga entrada (com FGTS), ITBI, cartório e tarifas; no fim desconta o saldo devedor. A amortização anual pode vir de renda extra (os outros caminhos investem o mesmo valor), do orçamento mensal ou da própria carteira. <b>Alugar:</b> investe todo o dinheiro e a sobra depois do aluguel; o FGTS continua na conta.</p>
       <p><b>CET (Custo Efetivo Total)</b>: taxa que inclui tudo o que se paga no financiamento — juros, seguros obrigatórios e tarifas. É o número certo para comparar propostas de bancos (que são obrigados a informá-lo). Aqui ele é estimado sem TR, como os bancos costumam divulgar.</p>
-      <p><b>Não entram:</b> condomínio e IPTU (no Rio o inquilino costuma pagar os dois, então se anulam), mudança, amortizações extras, redutores do IR sobre ganho de capital e distribuição de lucros do FGTS. O seguro é um valor fixo.</p>
+      <p><b>Não entram:</b> condomínio e IPTU (no Rio o inquilino costuma pagar os dois, então se anulam), mudança, amortizações extras irregulares (a amortização anual informada entra), redutores do IR sobre ganho de capital e distribuição de lucros do FGTS. O seguro é um valor fixo.</p>
       <p id="cRefs"></p>
       <p class="font-semibold">Simulação educativa, não é recomendação. Confirme taxas, CET e condições com o banco antes de decidir.</p>
     </div>`;
@@ -139,15 +145,18 @@ function calcMontar() {
   root.addEventListener('input', e => {
     if (e.target.id === 'cenNome' || e.target.classList.contains('cenSel')) return;
     if (e.target.id === 'cArea') return calcUsarMediana(true);
-    if (e.target.type === 'number') CALC_EDIT.add(e.target.id);
+    if (e.target.dataset.money) e.target.value = formatMoeda(parseMoeda(e.target.value));
+    if (e.target.id && (e.target.type === 'number' || e.target.dataset.money)) CALC_EDIT.add(e.target.id);
     calcSugerir(); calcRodar();                      // atualiza sugestões dependentes (aluguel ← valor, horizonte ← prazo)
   });
   root.addEventListener('change', e => { if (e.target.type === 'checkbox' && !e.target.classList.contains('cenSel')) { calcSugerir(); calcRodar(); } });
   root.addEventListener('click', e => {
     const h = e.target.closest('.cHelp'); if (h) { $(h.dataset.for + 'Help').classList.toggle('hidden'); return; }
-    const s = e.target.closest('.cSis'); if (s) { root.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x === s)); calcRodar(); }
+    const sis = e.target.closest('.cSis'); if (sis) { root.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x === sis)); calcRodar(); return; }
+    const perfil = e.target.closest('.cPerfil'); if (perfil) { const ipca = cv('cIpca'), nom = +perfil.dataset.nom, real = ((1 + nom / 100) / (1 + ipca / 100) - 1) * 100; $('cRendReal').value = real.toFixed(2); CALC_EDIT.add('cRendReal'); root.querySelectorAll('.cPerfil').forEach(x => x.classList.toggle('on', x === perfil)); $('cPerfilInfo').textContent = `${perfil.textContent.trim()}: ${f2(nom)}% nominal equivale a ${f2(real)}% real com IPCA de ${f2(ipca)}%.`; calcRodar(); }
   });
   $('cBairro').onchange = () => calcUsarMediana();
+  $('cAmortFonte').onchange = () => { calcAmortFonteInfo(); calcRodar(); };
   $('cenSalvar').onclick = cenSalvar;
   $('cenNome').onkeydown = e => { if (e.key === 'Enter') cenSalvar(); };
   $('cenLista').addEventListener('click', e => {
@@ -161,23 +170,34 @@ function calcMontar() {
     cenComparar();
   });
   $('cUsarMed').onclick = () => calcUsarMediana();
-  $('cReset').onclick = () => { CALC_EDIT.clear(); $('cAlugVal').checked = true; $('cVender').checked = true; $('cFinOpc').checked = false; calcSugerir(); calcUsarMediana(true); calcRodar(); };
+  $('cReset').onclick = () => { CALC_EDIT.clear(); $('cAlugVal').checked = true; $('cVender').checked = true; $('cFinOpc').checked = false; $('cAmortFonte').value = 'renda'; calcSugerir(); calcUsarMediana(true); calcRodar(); };
   CALC_OK = true;
 }
 
-const cv = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+const cv = id => { const el = $(id); if (!el) return 0; if (CAMPOS_MOEDA.has(id)) return parseMoeda(el.value); const v = parseFloat(String(el.value).replace(',', '.')); return isFinite(v) ? v : 0; };
 function setSug(id, val, txt) {
-  if (!CALC_EDIT.has(id)) $(id).value = val;
+  if (!CALC_EDIT.has(id)) $(id).value = CAMPOS_MOEDA.has(id) ? formatMoeda(val) : val;
   $(id + 'Sug').innerHTML = txt;
+}
+function calcAmortFonteInfo() {
+  const fonte = $('cAmortFonte')?.value || 'renda', v = brl(cv('cAmortAnual'));
+  const txt = {
+    renda: `<b>Renda extra anual:</b> no mês da amortização, o financiamento usa ${v}; comprar à vista e alugar recebem e investem o <b>mesmo valor</b>. Representa 13º salário, bônus ou PLR e mantém os caminhos comparáveis. O valor é fixo (sem correção pela inflação) e conta até a quitação do financiamento.`,
+    orcamento: `<b>Parte do orçamento:</b> o financiamento reserva mensalmente 1/12 de ${v} e amortiza no fim do ano; os outros caminhos investem esse mesmo valor mensal dentro do orçamento.`,
+    carteira: `<b>Retirada dos investimentos:</b> o financiamento vende investimentos para amortizar; os outros caminhos mantêm suas carteiras. Use para avaliar se vale trocar liquidez por redução da dívida.`
+  };
+  $('cAmortFonteInfo').innerHTML = cv('cAmortAnual') > 0 ? txt[fonte] : 'Informe uma amortização anual para comparar o uso do dinheiro. A opção recomendada é “Renda extra anual”.';
 }
 function calcSugerir() {
   const s = calcSugestoes(), V = cv('cValor') || 600000;
   const auto = k => s.auto[k] ? ' · Banco Central' : ' · referência fixa';
-  if (!$('cValor').value) $('cValor').value = 600000;
+  if (!$('cValor').value) $('cValor').value = formatMoeda(600000);
   setSug('cItbi', CALC_REF.itbi, 'Rio de Janeiro: 3%');
   setSug('cCartorio', CALC_REF.cartorio, 'estimativa: ~1%');
   setSug('cManut', CALC_REF.manutencao, 'estimativa: 0,5% a 1% a.a.');
-  setSug('cEntrada', 20, 'sugestão: 20% (mínimo usual)');
+  setSug('cEntrada', 20, '');
+  const entValor = V * cv('cEntrada') / 100, fgEntrada = Math.min(cv('cFgts'), entValor);
+  $('cEntradaSug').innerHTML = `${f2(cv('cEntrada'))}% = <b>${brl(entValor)}</b>` + (fgEntrada > 0 ? ` · FGTS cobre ${brl(fgEntrada)} · dinheiro próprio ${brl(entValor - fgEntrada)}` : ' · mínimo usual: 20%');
   setSug('cFgts', 0, 'informe se for usar');
   {
     const custo = V * (cv('cItbi') + cv('cCartorio')) / 100, fg = cv('cFgts'), E = V * cv('cEntrada') / 100;
@@ -190,6 +210,8 @@ function calcSugerir() {
   setSug('cTR', s.tr, `12 meses até ${s.trAte}: ${f2(s.tr)}%${auto('tr')}`);
   setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês`);
   setSug('cTarifa', CALC_REF.tarifa, 'em geral R$ 2.000 a R$ 3.500');
+  setSug('cAmortAnual', 0, '0 = sem amortização extra · reduz prazo e juros');
+  calcAmortFonteInfo();
   const alug = Math.round(V * CALC_REF.yieldAluguel / 100 / 12 / 50) * 50;
   setSug('cAluguel', alug, `≈ ${brl(alug)} (${f2(CALC_REF.yieldAluguel)}% a.a. do valor, FipeZAP)`);
   const acompanha = $('cAlugVal').checked;
@@ -218,22 +240,30 @@ function calcInfoBairro() {
 function calcUsarMediana(quieto) {
   const info = calcBairroInfo($('cBairro').value);
   if (!info?.m2) { if (!quieto) calcInfoBairro(); return; }
-  $('cValor').value = Math.round(info.m2 * cv('cArea') / 1000) * 1000; CALC_EDIT.delete('cValor'); CALC_EDIT.delete('cAluguel');
+  $('cValor').value = formatMoeda(Math.round(info.m2 * cv('cArea') / 1000) * 1000); CALC_EDIT.delete('cValor'); CALC_EDIT.delete('cAluguel');
   calcSugerir(); calcRodar();
 }
 
 // ---------- Motor da simulação (mensal) ----------
 const aMes = a => Math.pow(1 + a / 100, 1 / 12) - 1;   // taxa anual efetiva → mensal
-function financiamento(F, n, jurosAA, trAA, sis, seguro) {
-  const i = jurosAA / 100 / 12, tr = aMes(trAA), parc = [], saldoFim = [];   // juros nominais a.a. ÷ 12 (padrão dos contratos)
-  let s = F, juros = 0;
+function financiamento(F, n, jurosAA, trAA, sis, seguro, extraAnual = 0) {
+  const i = jurosAA / 100 / 12, tr = aMes(trAA), parc = [], baseParc = [], extras = [], saldoFim = [];
+  let s = F, sv = F, juros = 0, amortExtra = 0, meses = 0;    // sv = saldo virtual sem amortizações extras
   for (let k = 0; k < n; k++) {
-    s *= 1 + tr;
-    const j = s * i, rest = n - k;
-    const amort = sis === 'sac' ? s / rest : (i ? s * i / (1 - Math.pow(1 + i, -rest)) : s / rest) - j;
-    parc.push(j + amort + seguro); juros += j; s -= amort; saldoFim.push(Math.max(s, 0));
+    if (s <= 0.01) { parc.push(0); baseParc.push(0); extras.push(0); saldoFim.push(0); continue; }
+    const rest = n - k;
+    s *= 1 + tr; sv *= 1 + tr;
+    // Prestação programada do contrato sem extras; o saldo real menor transforma mais da mesma prestação em amortização e reduz o prazo.
+    const jv = sv * i;
+    const av = Math.min(sv, sis === 'sac' ? sv / rest : (i ? sv * i / (1 - Math.pow(1 + i, -rest)) : sv / rest) - jv);
+    const prestBase = jv + av;
+    const j = s * i, amort = Math.min(s, Math.max(0, prestBase - j));
+    s -= amort; sv -= av; juros += j;
+    let extra = 0;
+    if ((k + 1) % 12 === 0 && extraAnual > 0 && s > 0.01) { extra = Math.min(s, extraAnual); s -= extra; amortExtra += extra; }
+    baseParc.push(j + amort + seguro); extras.push(extra); parc.push(j + amort + seguro + extra); saldoFim.push(Math.max(s, 0)); meses = k + 1;
   }
-  return { parc, saldoFim, juros };
+  return { parc, baseParc, extras, saldoFim, juros, amortExtra, meses };
 }
 function cetAA(F, tarifa, parc) {          // TIR mensal (bisseção) → anual
   const vp = r => { let v = F - tarifa, d = 1; for (const p of parc) { d /= 1 + r; v -= p * d; } return v; };
@@ -256,7 +286,10 @@ function calcSimular(p, leve = false) {
   // quais caminhos se aplicam: com o dinheiro todo → à vista × alugar (+ financiado, se pedir); sem → financiado × alugar
   const mostra = viavelA ? ['a', ...(p.finOpc && temFin ? ['b'] : []), 'c'] : ['b', 'c'];
   const validos = mostra.filter(k => k !== 'b' || viavelB);
-  const fin = financiamento(Math.max(F, 0), n, p.juros, p.tr, p.sis, seg);
+  const fin = financiamento(Math.max(F, 0), n, p.juros, p.tr, p.sis, seg, p.amortAnual);
+  const reserva = Array(n).fill(0);
+  for (let fim = 11; fim < n; fim += 12) { const ex = fin.extras[fim] || 0; for (let k = Math.max(0, fim - 11); k <= fim; k++) reserva[k] = ex / 12; }
+  let carteiraFalta = 0, alternativoAmort = 0;
   const rI = aMes(((1 + p.ipca / 100) * (1 + p.rendReal / 100) - 1) * 100), rV = aMes(p.valoriz), rP = aMes(p.ipca);
   const rF = aMes(((1 + p.tr / 100) * 1.03 - 1) * 100);     // FGTS: TR + 3% a.a.
   const reaj = p.alugVal ? p.valoriz : p.reajAluguel;
@@ -277,15 +310,27 @@ function calcSimular(p, leve = false) {
   };
   for (let m = 0; m < H; m++) {
     if (m > 0 && m % 12 === 0) aluguel *= 1 + reaj / 100;
-    const pf = m < n ? fin.parc[m] : 0, manut = imovel * p.manut / 100 / 12;
-    const out = { a: manut, b: pf + manut, c: aluguel };
-    // orçamento: informado (corrigido pelo IPCA) ou o maior gasto entre os caminhos mostrados
-    const orc = p.orc > 0 ? p.orc * Math.pow(1 + rP, m) : Math.max(...mostra.map(k => out[k]));
-    if (m === 0) orc0 = orc;
+    const pfBase = m < n ? fin.baseParc[m] : 0, extra = m < n ? fin.extras[m] : 0, manut = imovel * p.manut / 100 / 12;
+    const reservaMes = p.amortFonte === 'orcamento' && m < n ? reserva[m] : 0;
+    const out = { a: manut, b: pfBase + manut + reservaMes, c: aluguel };
+    // Renda extra é dinheiro adicional comum aos caminhos: o financiado amortiza; à vista e aluguel investem o mesmo valor.
+    const rendaExtra = p.amortFonte === 'renda' ? extra : 0;
+    const orcBase = p.orc > 0 ? p.orc * Math.pow(1 + rP, m) : Math.max(...mostra.map(k => out[k]));
+    const orc = orcBase + rendaExtra;
+    if (m === 0) orc0 = orcBase;
     for (const x of [A, B, C]) { x.inv.s *= 1 + rI; x.fg *= 1 + rF; }
     for (const [k, X] of [['a', A], ['b', B], ['c', C]]) {
-      const d = orc - out[k]; X.inv.s += d; X.inv.ap += d;          // sobra é investida; falta sai dos investimentos
+      // No financiado, a renda extra paga a amortização; nos outros caminhos ela sobra e é investida.
+      const pagaExtra = k === 'b' && p.amortFonte === 'renda' ? extra : 0;
+      const d = orc - out[k] - pagaExtra; X.inv.s += d; X.inv.ap += d;
       if (d < -1) { est[k].n++; est[k].max = Math.max(est[k].max, -d / Math.pow(1 + rP, m)); }
+    }
+    if (extra > 0 && p.amortFonte === 'renda') alternativoAmort += extra;
+    if (reservaMes > 0 && p.amortFonte === 'orcamento') alternativoAmort += reservaMes;
+    if (extra > 0 && p.amortFonte === 'carteira') {
+      const antes = B.inv.s, depois = antes - extra;
+      if (antes > 0) B.inv.ap *= Math.max(0, depois) / antes;
+      B.inv.s = depois; carteiraFalta += Math.max(0, -depois); alternativoAmort += extra;
     }
     totAlug += aluguel; totManut += manut; imovel *= 1 + rV;
     if (!leve && ((m + 1) % 12 === 0 || m === H - 1)) {
@@ -303,10 +348,10 @@ function calcSimular(p, leve = false) {
   for (const k of 'abc') res[k].hoje = res[k].nom / defl;
   const melhor = validos.reduce((m, k) => res[k].hoje > res[m].hoje ? k : m, validos[0]);
   if (leve) return { res, mostra, validos, melhor };
-  const cet = temFin ? cetAA(F, tarifa, financiamento(F, n, p.juros, 0, p.sis, seg).parc) : null;
-  return { res, mostra, validos, melhor, viavelA, viavelB, needA, needB, dinheiro, est, orc0, serie, fin, cet, K, custo, F: Math.max(F, 0), fgAmort, temFin, n, H,
-           totAlug, totManut, aluguelFinal: aluguel, faltaB: Math.max(0, needB - dinheiro), faltaA: Math.max(0, needA - dinheiro),
-           pagoFin: fin.parc.slice(0, Math.min(n, H)).reduce((s, x) => s + x, 0), rendNom: ((1 + p.ipca / 100) * (1 + p.rendReal / 100) - 1) * 100 };
+  const cet = temFin ? cetAA(F, tarifa, financiamento(F, n, p.juros, 0, p.sis, seg, p.amortAnual).parc) : null;
+  return { res, mostra, validos, melhor, viavelA, viavelB, needA, needB, dinheiro, est, orc0, serie, fin, cet, K, custo, F: Math.max(F, 0), fgAmort, temFin, n, nReal: fin.meses, H,
+           totAlug, totManut, aluguelFinal: aluguel, carteiraFalta, alternativoAmort, faltaB: Math.max(0, needB - dinheiro), faltaA: Math.max(0, needA - dinheiro),
+           pagoFin: fin.parc.slice(0, Math.min(fin.meses, H)).reduce((s, x) => s + x, 0), rendNom: ((1 + p.ipca / 100) * (1 + p.rendReal / 100) - 1) * 100 };
 }
 
 // ---------- Sensibilidade ----------
@@ -354,19 +399,19 @@ function calcSensibilidade(p, r0) {
 
 // monta os parâmetros a partir de um estado { campos: {id: valor}, chk: {id: bool}, sis }
 function calcParams(st) {
-  const g = id => { const v = parseFloat(st.campos[id]); return isFinite(v) ? v : 0; };
+  const g = id => valorEstado(st, id);
   return { V: g('cValor'), entrada: Math.min(g('cEntrada'), 100), fgts: g('cFgts'), prazo: Math.max(1, Math.min(g('cPrazo'), 35)), juros: g('cJuros'), tr: g('cTR'),
-    seguros: g('cSeguros'), itbi: g('cItbi'), cartorio: g('cCartorio'), tarifa: g('cTarifa'), manut: g('cManut'), aluguel: g('cAluguel'), reajAluguel: g('cReajAluguel'),
+    seguros: g('cSeguros'), amortAnual: g('cAmortAnual'), itbi: g('cItbi'), cartorio: g('cCartorio'), tarifa: g('cTarifa'), manut: g('cManut'), aluguel: g('cAluguel'), reajAluguel: g('cReajAluguel'),
     alugVal: !!st.chk.cAlugVal, valoriz: g('cValoriz'), rendReal: g('cRendReal'), ir: g('cIR'), ipca: g('cIpca'),
     horiz: Math.max(1, Math.min(g('cHoriz'), 40)), vender: !!st.chk.cVender, corret: g('cCorret'), irGanho: g('cIRGanho'), sis: st.sis || 'sac',
     dinheiro: st.campos.cDinheiro == null || st.campos.cDinheiro === '' ? null : g('cDinheiro'),   // vazio/antigo = o suficiente para comprar à vista
-    orc: g('cOrcamento'), finOpc: st.chk.cFinOpc == null ? true : !!st.chk.cFinOpc };
+    orc: g('cOrcamento'), finOpc: st.chk.cFinOpc == null ? true : !!st.chk.cFinOpc, amortFonte: st.amortFonte || 'renda' };
 }
 // estado atual da tela
 function calcEstado() {
   const campos = {}; for (const [id] of CALC_CAMPOS) campos[id] = $(id).value;
   return { campos, chk: { cAlugVal: $('cAlugVal').checked, cVender: $('cVender').checked, cFinOpc: $('cFinOpc').checked }, sis: document.querySelector('.cSis.on')?.dataset.s || 'sac',
-           bairro: $('cBairro').value, bairroNome: $('cBairro').selectedOptions[0]?.textContent || '', area: $('cArea').value };
+           bairro: $('cBairro').value, bairroNome: $('cBairro').selectedOptions[0]?.textContent || '', area: $('cArea').value, amortFonte: $('cAmortFonte').value };
 }
 
 // ---------- Cenários salvos (no navegador, localStorage) ----------
@@ -386,11 +431,11 @@ function cenSalvar() {
 }
 function cenCarregar(id) {
   const c = getCen().find(x => x.id === id); if (!c) return;
-  for (const [k, v] of Object.entries(c.campos)) { if ($(k)) { $(k).value = v; CALC_EDIT.add(k); } }
+  for (const [k, v] of Object.entries(c.campos)) { if ($(k)) { $(k).value = CAMPOS_MOEDA.has(k) ? formatMoeda(parseMoeda(v)) : v; CALC_EDIT.add(k); } }
   $('cAlugVal').checked = !!c.chk.cAlugVal; $('cVender').checked = !!c.chk.cVender; $('cFinOpc').checked = c.chk.cFinOpc == null ? true : !!c.chk.cFinOpc;
   if (c.campos.cDinheiro == null) CALC_EDIT.delete('cDinheiro');
   document.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x.dataset.s === c.sis));
-  if (c.bairro != null) $('cBairro').value = c.bairro; if (c.area) $('cArea').value = c.area;
+  if (c.bairro != null) $('cBairro').value = c.bairro; if (c.area) $('cArea').value = c.area; $('cAmortFonte').value = c.amortFonte || 'renda'; calcAmortFonteInfo();
   calcSugerir(); calcRodar(); toast(`“${c.nome}” carregado nos campos.`);
   $('tab-calc').scrollIntoView({ behavior: 'smooth' });
 }
@@ -404,7 +449,7 @@ function cenRender() {
   if (!CMP_SEL.size) l.slice(-CMP_MAX).forEach(c => CMP_SEL.add(c.id));
   $('cenLista').innerHTML = l.length ? l.map(c => `<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 border-b last:border-0">
       <input type="checkbox" class="cenSel accent-[#ef4b3f]" data-id="${c.id}" ${CMP_SEL.has(c.id) ? 'checked' : ''} aria-label="Comparar ${c.nome}">
-      <span class="font-semibold">${c.nome}</span><span class="text-xs text-gray-500 truncate">${c.bairroNome && c.bairro ? c.bairroNome + ' · ' : ''}${brl(+c.campos.cValor)} · ${c.criado}</span>
+      <span class="font-semibold">${c.nome}</span><span class="text-xs text-gray-500 truncate">${c.bairroNome && c.bairro ? c.bairroNome + ' · ' : ''}${brl(valorEstado(c, 'cValor'))} · ${c.criado}</span>
       <button class="cenLoad ml-auto text-xs text-brand-600 hover:underline whitespace-nowrap" data-id="${c.id}"><i class="fa-solid fa-upload mr-1"></i>Carregar</button>
       <button class="cenDel text-xs text-gray-400 hover:text-red-600" data-id="${c.id}" aria-label="Apagar ${c.nome}"><i class="fa-solid fa-trash"></i></button></div>`).join('')
     : '<p class="text-xs text-gray-500">Nenhum cenário salvo. Preencha os campos e clique em “Salvar cenário”.</p>';
@@ -420,7 +465,7 @@ function cenComparar() {
   // linhas de premissas: só destaca as que mudam entre cenários
   const prem = [
     ['Bairro', x => x.c.bairro ? x.c.bairroNome : '—'], ['Seu dinheiro', x => brl(x.r.dinheiro)], ['Orçamento mensal', x => x.p.orc > 0 ? brl(x.p.orc) : 'automático'], ['Valor do imóvel', x => brl(x.p.V)], ['Entrada', x => pc(x.p.entrada)], ['FGTS usado', x => brl(x.p.fgts)],
-    ['Prazo', x => x.p.prazo + ' anos'], ['Sistema', x => x.p.sis.toUpperCase()], ['Juros', x => 'TR + ' + pc(x.p.juros)], ['TR', x => pc(x.p.tr)],
+    ['Prazo contratual', x => x.p.prazo + ' anos'], ['Amortização extra anual', x => brl(x.p.amortAnual)], ['Origem da amortização', x => ({renda:'renda extra',orcamento:'orçamento mensal',carteira:'investimentos'}[x.p.amortFonte])], ['Sistema', x => x.p.sis.toUpperCase()], ['Juros', x => 'TR + ' + pc(x.p.juros)], ['TR', x => pc(x.p.tr)],
     ['Seguros', x => brl(x.p.seguros) + '/mês'], ['Aluguel inicial', x => brl(x.p.aluguel)], ['Reajuste do aluguel', x => x.p.alugVal ? 'valorização' : pc(x.p.reajAluguel)],
     ['Valorização', x => pc(x.p.valoriz)], ['Manutenção', x => pc(x.p.manut)], ['Rendimento real', x => pc(x.p.rendReal)], ['IPCA', x => pc(x.p.ipca)],
     ['Horizonte', x => x.p.horiz + ' anos'], ['Venda no fim', x => x.p.vender ? `sim (${pc(x.p.corret)} + IR ${pc(x.p.irGanho)})` : 'não'],
@@ -440,7 +485,7 @@ function cenComparar() {
     ${linhaRes('Seu dinheiro hoje', x => brl(x.r.dinheiro))}
     ${linhaRes('1ª parcela (com seguros)', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.parc[0]) : '—')}
     ${linhaRes('Renda mínima (parcela ≤ 30%)', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.parc[0] / 0.3) : '—')}
-    ${linhaRes('Total de juros', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.juros) : '—')}
+    ${linhaRes('Juros sobre o valor financiado', x => x.r.mostra.includes('b') && x.r.temFin ? brl(x.r.fin.juros) : '—')}
     ${linhaRes('CET estimado', x => !x.r.mostra.includes('b') || x.r.cet == null ? '—' : x.r.cet.toFixed(1).replace('.', ',') + '% a.a.')}
     <tr><td colspan="${rs.length + 1}" class="pt-4 pb-1 text-xs font-bold uppercase text-gray-500">Premissas <span class="normal-case font-normal">(em amarelo, o que muda)</span></td></tr>
     ${prem.map(linhaPrem).join('')}
@@ -478,6 +523,13 @@ function calcRodar() {
     av.push(aviso('text-gray-600', `Financiar tendo o dinheiro só compensa se o investimento render mais que o financiamento custa: rendimento líquido de IR ≈ ${f1(liqInv)}% a.a. × CET + TR ≈ ${f1(custoFin)}% a.a. ${liqInv > custoFin ? '(aqui o investimento rende mais)' : '(aqui o financiamento custa mais)'}.`));
   }
   if (r.mostra.includes('b') && r.fgAmort > 0) av.push(aviso('text-gray-500', `O FGTS acima da entrada (${brl(r.fgAmort)}) foi usado para reduzir o valor financiado.`));
+  if (p.amortAnual > 0 && r.mostra.includes('b')) {
+    const msg = p.amortFonte === 'renda' ? `A amortização vem de renda extra anual: o financiado amortiza e os demais caminhos investem os mesmos ${brl(r.alternativoAmort)} ao longo do período.`
+      : p.amortFonte === 'orcamento' ? `A amortização é formada dentro do orçamento: o financiado reserva mensalmente e os demais caminhos investem o equivalente (${brl(r.alternativoAmort)} no período).`
+      : `A amortização sai da carteira do financiado; à vista e aluguel mantêm seus investimentos. Foram retirados ${brl(r.alternativoAmort)} ao longo do período.`;
+    av.push(aviso('text-gray-600', msg));
+    if (p.amortFonte === 'carteira' && r.carteiraFalta > 0) av.push(aviso('text-red-600 font-semibold', `A carteira do financiado ficou insuficiente em ${brl(r.carteiraFalta)} em algum momento; esse cenário exigiria outra fonte de dinheiro.`));
+  }
   const orcTxt = p.orc > 0 ? `orçamento informado de ${brl(p.orc)}/mês (corrigido pela inflação)` : `orçamento automático de ${brl(r.orc0)}/mês no 1º mês (o maior gasto entre os caminhos)`;
   for (const [k, nome] of cen) if (r.est[k].n) av.push(aviso('text-amber-700', `${nome}: em ${num(r.est[k].n)} meses o gasto passa do orçamento (até ${brl(r.est[k].max)}/mês a mais, em valores de hoje); a diferença sai dos investimentos.`));
   $('cResumo').innerHTML = `<div class="card border-2" style="border-color:${melhor[2]}"><p class="text-base"><b>${melhor[1]}</b> deixa o maior patrimônio após <b>${num(p.horiz)} anos</b>${segundo ? `: ${f1(dif)}% acima de “${segundo[1].toLowerCase()}”` : ''}, com as premissas acima.${segundo && dif < 5 ? ' A diferença é pequena: pequenas mudanças nas premissas podem inverter o resultado (veja a sensibilidade).' : ''}</p>
@@ -489,7 +541,7 @@ function calcRodar() {
   const tem = k => r.mostra.includes(k), cols = r.mostra;
   const lin = (rot, v) => `<tr class="border-b last:border-0"><td class="py-2 text-gray-600">${rot}</td>${cols.map(k => `<td class="text-right">${v[k] ?? '—'}</td>`).join('')}</tr>`;
   const B = (k, x) => tem(k) ? x : undefined;
-  const nP = r.n, ult = r.fin.parc[nP - 1], nomeCurto = { a: 'À vista', b: 'Financiado', c: 'Alugar' };
+  const nP = r.nReal, ult = r.fin.parc[Math.max(0, nP - 1)], nomeCurto = { a: 'À vista', b: 'Financiado', c: 'Alugar' };
   $('cDetalhe').innerHTML = `<h3 class="font-bold mb-3">Detalhes</h3><table class="w-full text-sm min-w-[480px]"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2"></th>${cols.map(k => `<th class="text-right">${nomeCurto[k]}</th>`).join('')}</tr></thead><tbody>
     ${lin('Seu dinheiro hoje (igual em todos)', { a: brl(r.dinheiro), b: brl(r.dinheiro), c: brl(r.dinheiro) })}
     ${lin('Gasto inicial (imóvel/entrada + custos − FGTS)', { a: brl(r.needA), b: brl(r.needB) })}
@@ -497,7 +549,9 @@ function calcRodar() {
     ${tem('b') ? lin('Valor financiado', { b: brl(r.F) }) : ''}
     ${lin('1ª parcela (com seguros) / aluguel inicial', { b: brl(r.fin.parc[0]), c: brl(p.aluguel) })}
     ${lin(`Última parcela (mês ${nP}) / aluguel no fim`, { b: brl(ult), c: brl(r.aluguelFinal) })}
-    ${tem('b') ? lin('Total de juros do financiamento (contrato inteiro)', { b: brl(r.fin.juros) }) : ''}
+    ${tem('b') ? lin('Juros sobre o valor financiado (até a quitação)', { b: `${brl(r.fin.juros)} (${r.F > 0 ? f2(r.fin.juros / r.F * 100) : '0'}% do principal)` }) : ''}
+    ${tem('b') && p.amortAnual > 0 ? lin('Amortização extra total / prazo efetivo', { b: `${brl(r.fin.amortExtra)} · ${r.nReal} meses` }) : ''}
+    ${tem('b') && p.amortAnual > 0 ? lin('Uso alternativo do mesmo valor', { a: p.amortFonte === 'carteira' ? 'mantém os investimentos' : `investe ${brl(r.alternativoAmort)}`, b: p.amortFonte === 'renda' ? 'renda extra → dívida' : p.amortFonte === 'orcamento' ? 'reserva mensal → dívida' : 'retira da carteira → dívida', c: p.amortFonte === 'carteira' ? 'mantém os investimentos' : `investe ${brl(r.alternativoAmort)}` }) : ''}
     ${tem('b') ? lin('CET estimado (sem TR)', { b: r.cet == null ? '—' : f1(r.cet) + '% a.a.' }) : ''}
     ${lin(`Pago em parcelas / aluguel em ${num(p.horiz)} anos`, { b: brl(r.pagoFin), c: brl(r.totAlug) })}
     ${lin(`Manutenção em ${num(p.horiz)} anos`, { a: brl(r.totManut), b: brl(r.totManut) })}
