@@ -64,7 +64,9 @@ Fonte: planilhas da Fazenda do Rio (uma linha por transação). A base completa,
 ```bash
 pip install openpyxl
 python scripts/processar_itbi.py          # lê as planilhas em C:\Projetos\ITBI Git\planilhas_sefaz e gera saida\itbi_limpo.csv + relatorio_qualidade.txt
-python scripts/gerar_transacoes_site.py   # lê saida\itbi_limpo.csv e gera public/transacoes/
+python scripts/gerar_dados_agregados.py  # lê saida\itbi_limpo.csv e gera public/dados.json + meta.json (Visão geral, Comparador, Tendência; de 2011 em diante)
+python scripts/gerar_transacoes_site.py   # lê saida\itbi_limpo.csv e gera public/transacoes/ (aba Transações)
+python scripts/atualizar_indices.py       # IPCA e CDI do Banco Central, de 2010 em diante -> public/indices.json
 ```
 Pastas esperadas: projeto em `C:\Projetos\ITBI Git\ImobRJ` e planilhas em `C:\Projetos\ITBI Git\planilhas_sefaz` (fora do projeto, portanto fora do Git).
 Rode os comandos com o terminal do VS Code aberto na pasta `ImobRJ`. Depois, *Commit* no VS Code. Leia `relatorio_qualidade.txt` antes de publicar.

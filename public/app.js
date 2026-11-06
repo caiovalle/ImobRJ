@@ -18,6 +18,8 @@ const brl = v => v == null ? '—' : v.toLocaleString('pt-BR', { style:'currency
 const num = v => v == null ? '—' : Math.round(v).toLocaleString('pt-BR');
 const pct = v => { if (v == null) return '—'; const t = v.toFixed(1); return (v > 0 && t !== '0.0' ? '+' : '') + (t === '-0.0' ? '0.0' : t).replace('.', ',') + '%'; };
 const pctColor = v => v == null ? 'text-gray-500' : v > 0 ? 'text-emerald-600' : v < 0 ? 'text-red-600' : 'text-gray-500';
+const ANO0 = 2010;   // mês t=0 é jan/2010; a base por imóvel começa em jul/2011 (e a do Data.Rio em 2010)
+const minmax = (arr, f = x => x) => { let a = Infinity, b = -Infinity; for (const x of arr) { const v = f(x); if (v < a) a = v; if (v > b) b = v; } return [a, b]; };   // seguro p/ centenas de milhares de itens (Math.max(...lista) estoura)
 const COLORS = ['#ef4b3f', '#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#94a3b8'];
 
 // ---------- Estado ----------
@@ -32,17 +34,27 @@ async function init() {
   try {
     const r = await fetch('dados.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error(r.status);
-    start(await r.json());
+    start(expandir(await r.json()));
   } catch (e) {
     $('loadIcon').classList.add('hidden'); $('loadMsg').textContent = 'Arquivo dados.json não carregado.';
     $('manual').classList.remove('hidden');
-    $('file').onchange = ev => { const rd = new FileReader(); rd.onload = () => start(JSON.parse(rd.result)); rd.readAsText(ev.target.files[0]); };
+    $('file').onchange = ev => { const rd = new FileReader(); rd.onload = () => start(expandir(JSON.parse(rd.result))); rd.readAsText(ev.target.files[0]); };
   }
 }
 
+// dados.json: lista de objetos (formato antigo) ou {formato:2, bairros, ruas, tipologias, linhas:[[b,r,tip,comercial,ano,mes,n,area,valor],…]}
+function expandir(j) {
+  if (Array.isArray(j)) return j;
+  if (j.formato !== 2) throw new Error('formato de dados.json desconhecido');
+  return j.linhas.map((l, i) => ({ id: i + 1, bairro: j.bairros[l[0]], logradouro: j.ruas[l[1]], tipologia: j.tipologias[l[2]], tipo: l[3] ? 'Comercial' : 'Residencial',
+    ano: l[4], mes: l[5], transacoes: l[6], area: l[7], valor: l[8], valor_m2: Math.round(l[8] / l[7] * 100) / 100 }));
+}
+let META = null;
 function start(raw) {
-  ROWS = raw.map(r => ({ ...r, bairro: r.bairro.trim(), t: (r.ano - 2018) * 12 + r.mes - 1,
-    nb: strip(r.bairro), nl: normRua(r.logradouro), transacoes: r.transacoes || 1 }));
+  const cNb = new Map(), cNl = new Map();   // cache: strip/normRua por texto (evita refazer regex em centenas de milhares de linhas)
+  const memo = (c, f, s) => c.get(s) ?? (c.set(s, f(s)), c.get(s));
+  ROWS = raw;
+  for (const r of ROWS) { r.bairro = r.bairro.trim(); r.t = (r.ano - ANO0) * 12 + r.mes - 1; r.nb = memo(cNb, strip, r.bairro); r.nl = memo(cNl, normRua, r.logradouro); r.transacoes = r.transacoes || 1; }
   // índices para autocomplete
   const rm = new Map(), bm = new Map();
   for (const r of ROWS) {
@@ -65,6 +77,7 @@ function start(raw) {
   $('cmpExtra').innerHTML = '<option value="">— nenhum —</option>' + BAIRROS.map(b => `<option value="${b.nb}">${b.nome}</option>`).join('');
 
   fetch('meta.json', { cache: 'no-cache' }).then(r => r.json()).then(m => {   // carimbo de atualização (opcional)
+    META = m; renderMethodAuto();
     const [a, mm] = m.ultimo_periodo.split('-'), [y, mo, d] = m.atualizado_em.split('-');
     $('stamp').textContent = ` · dados até ${MESES[+mm - 1]}/${a} · atualizado em ${d}/${mo}/${y}`;
   }).catch(() => {});
@@ -87,8 +100,8 @@ function agg(rows) {            // médias ponderadas pelo nº de transações
 }
 const key = t => F.gran === 3 ? Math.floor(t / 3) : t;
 const perYear = () => 12 / F.gran;
-const keyLabel = k => F.gran === 3 ? `T${k % 4 + 1}/${String(2018 + Math.floor(k / 4)).slice(2)}` : `${MESES[k % 12]}/${String(2018 + Math.floor(k / 12)).slice(2)}`;
-function makeAxis(rows) { const ks = rows.map(r => key(r.t)); const a = Math.min(...ks), b = Math.max(...ks); return Array.from({ length: b - a + 1 }, (_, i) => a + i); }
+const keyLabel = k => F.gran === 3 ? `T${k % 4 + 1}/${String(ANO0 + Math.floor(k / 4)).slice(2)}` : `${MESES[k % 12]}/${String(ANO0 + Math.floor(k / 12)).slice(2)}`;
+function makeAxis(rows) { const [a, b] = minmax(rows, r => key(r.t)); return Array.from({ length: b - a + 1 }, (_, i) => a + i); }
 function series(rows, axis) {   // R$/m² ponderado por período, alinhado ao eixo (null = sem dados)
   const m = new Map();
   for (const r of rows) { const k = key(r.t), o = m.get(k) || { n: 0, s: 0 }; o.n += r.transacoes; o.s += r.valor_m2 * r.transacoes; m.set(k, o); }
@@ -111,14 +124,14 @@ function movAvg(ys, w = 3) { return ys.map((_, i) => { const s = ys.slice(Math.m
 // Lidos de indices.json (gerado por scripts/atualizar_indices.py); se o arquivo não existir, tenta a API do BCB direto do navegador.
 let IDX = null;   // { ipca: Map(t → % a.m.), cdi: Map(...), fim: {ipca, cdi}, gerado_em, origem }
 const SGS = { ipca: 433, cdi: 4391 };
-const tOf = ym => { const [a, m] = ym.split('-'); return (+a - 2018) * 12 + +m - 1; };
-const ymLabel = t => `${MESES[t % 12]}/${2018 + Math.floor(t / 12)}`;
+const tOf = ym => { const [a, m] = ym.split('-'); return (+a - ANO0) * 12 + +m - 1; };
+const ymLabel = t => `${MESES[t % 12]}/${ANO0 + Math.floor(t / 12)}`;
 function parseIdx(j, origem) {
   const o = { gerado_em: j.gerado_em, origem, fim: {} };
   for (const nome of ['ipca', 'cdi']) {
     const m = new Map(Object.entries(j.series[nome].dados).map(([ym, v]) => [tOf(ym), +v]));
     if (m.size < 24) throw new Error('série curta: ' + nome);
-    o[nome] = m; o.fim[nome] = Math.max(...m.keys());
+    o[nome] = m; o.fim[nome] = minmax(m.keys())[1]; o.ini = Math.max(o.ini ?? -Infinity, minmax(m.keys())[0]);
   }
   return o;
 }
@@ -132,7 +145,7 @@ async function loadIndices() {
     const h = new Date(), fim = `${String(h.getDate()).padStart(2, '0')}/${String(h.getMonth() + 1).padStart(2, '0')}/${h.getFullYear()}`;
     const j = { gerado_em: h.toISOString().slice(0, 10), series: {} };
     for (const [nome, cod] of Object.entries(SGS)) {
-      const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cod}/dados?formato=json&dataInicial=01/01/2018&dataFinal=${fim}`);
+      const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cod}/dados?formato=json&dataInicial=01/01/${ANO0}&dataFinal=${fim}`);
       if (!r.ok) throw new Error(r.status);
       const dados = {}; (await r.json()).forEach(x => { const [, m, a] = x.data.split('/'); dados[`${a}-${m}`] = parseFloat(String(x.valor).replace(',', '.')); });
       j.series[nome] = { dados };
@@ -153,10 +166,12 @@ const fatorPct = f => f == null ? null : (f - 1) * 100;
 function mk(id, cfg) {
   if (!window.Chart) { if (!mk.warned) { mk.warned = true; toast('Chart.js não carregou (verifique a internet).'); } return; }
   charts[id]?.destroy();
-  cfg.options = Object.assign({ responsive: true, maintainAspectRatio: false }, cfg.options);
+  const horiz = cfg.options?.indexAxis === 'y', padrao = { responsive: true, maintainAspectRatio: false };
+  if (cfg.type === 'line' || cfg.type === 'bar') padrao.interaction = horiz ? { mode: 'nearest', axis: 'y', intersect: false } : { mode: 'index', intersect: false };
+  cfg.options = Object.assign(padrao, cfg.options);
   charts[id] = new Chart($(id), cfg);
 }
-const lineDs = (label, data, color, extra = {}) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true, ...extra });
+const lineDs = (label, data, color, extra = {}) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, pointHitRadius: 16, pointHoverRadius: 4, tension: .25, spanGaps: true, ...extra });
 const yBRL = { ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } };
 
 function render() {
@@ -178,12 +193,12 @@ function render() {
 }
 
 function renderOverview(sc) {
-  const lastT = Math.max(...B.map(r => r.t)), a = agg(sc), v = var12(sc, lastT);
+  const lastT = minmax(B, r => r.t)[1], a = agg(sc), v = var12(sc, lastT);
   const k = (icon, label, val, cls = '') => `<div class="card"><div class="text-xs text-gray-500 mb-1"><i class="fa-solid ${icon} mr-1"></i>${label}</div><div class="text-xl font-bold ${cls}">${val}</div></div>`;
   $('kpis').innerHTML = k('fa-handshake', 'Transações', num(a.n)) + k('fa-ruler-combined', 'Preço médio/m²', brl(a.m2)) +
     k('fa-sack-dollar', 'Valor médio', brl(a.valor)) + k('fa-vector-square', 'Área média', a.area.toFixed(0) + ' m²') +
     k('fa-arrow-trend-up', 'Variação 12m (R$/m²)', pct(v), pctColor(v)) +
-    (IDX ? (() => { const r = ganho(v, fator('ipca', lastT - 17, lastT - 5)); return k('fa-scale-balanced', 'Variação real 12m (descont. IPCA)', pct(r), pctColor(r)); })() : '');
+    (IDX ? kpiReal(janelaIdx(sc)) : '');
 
   const axis = makeAxis(B), s = series(sc, axis);
   mk('cPreco', { type: 'line', data: { labels: axis.map(keyLabel), datasets: [lineDs('R$/m²', s.map(p => p?.m2 ?? null), COLORS[0], { fill: true, backgroundColor: 'rgba(239,75,63,.10)' })] },
@@ -212,13 +227,13 @@ function renderRank() {
 }
 
 function renderCompare(sc) {
-  const lastT = Math.max(...B.map(r => r.t)), axis = makeAxis(B);
+  const lastT = minmax(B, r => r.t)[1], axis = makeAxis(B);
   const useIpca = !!IDX && $('cmpIpca').checked, useCdi = !!IDX && $('cmpCdi').checked;
   $('cmpMode').querySelector('option[value="real"]').disabled = !IDX;
   let mode = $('cmpMode').value; if (mode === 'real' && !IDX) mode = 'abs';
   if (useIpca || useCdi) mode = 'idx';                       // IPCA/CDI só fazem sentido em base 100
   $('idxNote').textContent = IDX
-    ? `Índices oficiais (Banco Central/SGS): IPCA (IBGE) até ${ymLabel(IDX.fim.ipca)}; CDI (B3) até ${ymLabel(IDX.fim.cdi)}. Veja detalhes em “Dados e metodologia”.`
+    ? `Índices oficiais (Banco Central/SGS): IPCA (IBGE) até ${ymLabel(IDX.fim.ipca)}; CDI (B3) até ${ymLabel(IDX.fim.cdi)}; disponíveis desde ${ymLabel(IDX.ini)}. Veja detalhes em “Dados e metodologia”.`
     : 'Índices IPCA/CDI indisponíveis. Rode scripts/atualizar_indices.py para gerar public/indices.json (instruções no README).';
   $('cmpIpca').disabled = $('cmpCdi').disabled = !IDX;
 
@@ -252,7 +267,7 @@ function renderCompare(sc) {
     return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td>
       <td>${brl(a12?.m2)}</td><td>${brl(a12?.valor)}</td><td>${num(a12?.n)}</td><td class="${pctColor(v)}">${pct(v)}</td><td class="${pctColor(d)}">${m.nome === 'Cidade do RJ' ? '—' : pct(d)}</td></tr>`;
   }).join('');
-  renderIdxTables(mercados, lastT);
+  renderIdxTables(mercados);
 
   const foco = S.lvl === 'cidade' ? null : agg(sc.filter(r => r.t > lastT - 12));
   const d = foco && cid ? (foco.m2 / cid.m2 - 1) * 100 : null;
@@ -261,31 +276,46 @@ function renderCompare(sc) {
     <p><b>${S.label}</b> está <b>${Math.abs(d).toFixed(1).replace('.', ',')}% ${d > 0 ? 'acima' : 'abaixo'}</b> da média da cidade nos últimos 12 meses (${brl(foco.m2)}/m² vs ${brl(cid.m2)}/m²).</p></div>`;
 }
 
-// Tabelas "imóvel × IPCA × CDI": 12 meses e período completo. Janelas de 12 meses → índices alinhados ao ponto médio de cada janela.
-function renderIdxTables(mercados, lastT) {
+// ---------- Comparação com IPCA/CDI na janela escolhida pelo usuário (filtros De/Até) ----------
+// Compara a média de R$/m² dos primeiros w meses com a dos últimos w meses da janela (w = 12 em janelas de 3+ anos; menor em janelas curtas)
+// e acumula IPCA/CDI entre os pontos médios dessas duas faixas. Exige ao menos 6 meses de dados.
+function janelaIdx(rows) {
+  if (!IDX || !rows.length) return null;
+  const [t0, t1] = minmax(rows, r => r.t), L = t1 - t0 + 1;
+  if (L < 6) return { t0, t1, curta: true };
+  const w = Math.min(12, Math.floor(L / 3));
+  const a0 = agg(rows.filter(r => r.t < t0 + w)), a1 = agg(rows.filter(r => r.t > t1 - w));
+  if (!a0 || !a1) return { t0, t1, curta: true };
+  const c0 = Math.ceil(t0 + (w - 1) / 2), c1 = Math.ceil(t1 - (w - 1) / 2);
+  return { t0, t1, w, L, nominal: (a1.m2 / a0.m2 - 1) * 100, ipca: fator('ipca', c0, c1), cdi: fator('cdi', c0, c1) };
+}
+function kpiReal(j) {
+  const cab = '<div class="text-xs text-gray-500 mb-1"><i class="fa-solid fa-scale-balanced mr-1"></i>Variação real no período (descont. IPCA) <i class="fa-regular fa-circle-question text-gray-400"></i></div>';
+  const card = (val, cls, sub, tip) => `<div class="card group relative cursor-help" tabindex="0">${cab}<div class="text-xl font-bold ${cls}">${val}</div><div class="text-xs text-gray-400 mt-0.5">${sub}</div>
+    <div class="hidden group-hover:block group-focus:block absolute z-30 right-0 top-full mt-2 w-72 rounded-xl bg-ink text-white text-xs p-3 shadow-xl leading-relaxed">${tip}</div></div>`;
+  if (!j || j.curta) return card('—', 'text-gray-500', 'período curto', 'Escolha um período de pelo menos 6 meses de dados para comparar com IPCA e CDI.');
+  const real = ganho(j.nominal, j.ipca), vsCdi = ganho(j.nominal, j.cdi);
+  if (real == null) return card('—', 'text-gray-500', `${ymLabel(j.t0)}–${ymLabel(j.t1)}`, 'Os índices (IPCA/CDI) não cobrem todo este período. Rode scripts/atualizar_indices.py para estendê-los.');
+  const tip = `<b>${ymLabel(j.t0)} a ${ymLabel(j.t1)}</b> (médias de ${j.w} meses nas pontas)<br>Imóvel (nominal): ${pct(j.nominal)} · IPCA: ${pct(fatorPct(j.ipca))}<br>` +
+    (vsCdi == null ? '' : `<b>CDI no mesmo período: ${pct(fatorPct(j.cdi))}</b> → o imóvel ficou ${Math.abs(vsCdi).toFixed(1).replace('.', ',')}% ${vsCdi >= 0 ? 'acima' : 'abaixo'} do CDI.<br>`) +
+    '<span class="text-gray-300">CDI é bruto de IR; o imóvel tem custos e pode render aluguel (não incluídos).</span>';
+  return card(pct(real), pctColor(real), `${ymLabel(j.t0)}–${ymLabel(j.t1)}`, tip);
+}
+function renderIdxTables(mercados) {
   const box = $('idxCards'); if (!IDX) { box.innerHTML = ''; return; }
   const cel = (v, cor = true) => `<td class="${cor ? pctColor(v) : ''}">${pct(v)}</td>`;
-  const tabela = (titulo, sub, linhas) => `<div class="card overflow-x-auto"><h3 class="font-bold">${titulo}</h3><p class="text-xs text-gray-500 mb-3">${sub}</p>
-    <table class="w-full text-sm min-w-[640px]"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>Imóvel (nominal)</th><th>IPCA</th><th>CDI</th><th>Imóvel real (acima do IPCA)</th><th>Imóvel vs CDI</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
-  const linha = (m, nom, ip, cd) => { const ipP = fatorPct(ip), cdP = fatorPct(cd);
-    return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td>
-      ${cel(nom)}${cel(ipP, false)}${cel(cdP, false)}${cel(ganho(nom, ip))}${cel(ganho(nom, cd))}</tr>`; };
-
-  const ip12 = fator('ipca', lastT - 17, lastT - 5), cd12 = fator('cdi', lastT - 17, lastT - 5);
-  const t12 = mercados.map(m => linha(m, var12(m.rows, lastT), ip12, cd12)).join('');
-
-  const tp = mercados.map(m => {
-    const ts = m.rows.map(r => r.t), t0 = Math.min(...ts), t1 = Math.max(...ts);
-    if (t1 - t0 < 35) return `<tr class="border-b last:border-0"><td class="py-2 font-medium"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>${m.nome}</td><td colspan="5" class="text-gray-400">Menos de 36 meses de dados: sem comparação confiável</td></tr>`;
-    const a0 = agg(m.rows.filter(r => r.t <= t0 + 11)), a1 = agg(m.rows.filter(r => r.t >= t1 - 11));
-    const nom = (a1.m2 / a0.m2 - 1) * 100;
-    return linha({ ...m, nome: `${m.nome} <span class="text-xs font-normal text-gray-400">(${ymLabel(t0)}–${ymLabel(t1)})</span>` }, nom, fator('ipca', t0 + 6, t1 - 5), fator('cdi', t0 + 6, t1 - 5));
+  const bolinha = m => `<span class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${m.cor}"></span>`;
+  const linhas = mercados.map(m => {
+    const j = janelaIdx(m.rows);
+    if (!j || j.curta) return `<tr class="border-b last:border-0"><td class="py-2 font-medium">${bolinha(m)}${m.nome}</td><td colspan="6" class="text-gray-400">Menos de 6 meses de dados neste período: sem comparação confiável</td></tr>`;
+    return `<tr class="border-b last:border-0"><td class="py-2 font-medium">${bolinha(m)}${m.nome}</td><td class="text-xs text-gray-500">${ymLabel(j.t0)}–${ymLabel(j.t1)} (médias de ${j.w} m)</td>
+      ${cel(j.nominal)}${cel(fatorPct(j.ipca), false)}${cel(fatorPct(j.cdi), false)}${cel(ganho(j.nominal, j.ipca))}${cel(ganho(j.nominal, j.cdi))}</tr>`;
   }).join('');
-
   const aviso = 'Referências oficiais: IPCA (IBGE) e CDI (B3), via Banco Central. O CDI é bruto (antes de Imposto de Renda); o imóvel tem custos (ITBI, corretagem, IPTU, condomínio) e pode render aluguel, que não entram aqui. O R$/m² médio mistura imóveis diferentes a cada mês, então não é a valorização de um imóvel específico. Não é recomendação de investimento.';
-  box.innerHTML = tabela('Últimos 12 meses', 'Média dos últimos 12 meses contra a dos 12 anteriores (mesma base da coluna “Var. 12m”).', t12) +
-    tabela('Período completo', 'Média dos primeiros 12 meses de dados contra a dos últimos 12 meses, em cada mercado (exige ao menos 36 meses).', tp) +
-    `<p class="text-xs text-gray-500 px-1">${aviso}</p>`;
+  box.innerHTML = `<div class="card overflow-x-auto"><h3 class="font-bold">Imóvel × IPCA × CDI no período selecionado</h3>
+    <p class="text-xs text-gray-500 mb-3">Acompanha os filtros “De” e “Até”. Compara a média dos primeiros com a dos últimos meses do período (12 meses em períodos de 3 anos ou mais; menos em períodos curtos, o que deixa o número mais sensível a oscilações) e acumula IPCA e CDI entre os pontos médios.</p>
+    <table class="w-full text-sm min-w-[760px]"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>Período</th><th>Imóvel (nominal)</th><th>IPCA</th><th>CDI</th><th>Imóvel real (acima do IPCA)</th><th>Imóvel vs CDI</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <p class="text-xs text-gray-500 px-1">${aviso}</p>`;
 }
 
 function renderTrend(sc) {
@@ -460,10 +490,14 @@ function bindEvents() {
 function renderMethodAuto() {
   const el = id => $(id); if (!el('mItbi')) return;
   fetch('transacoes/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) el('mTx').textContent = `Neste painel: ${num(j.total)} transações, ${j.ano_min}–${j.ano_max}, ${num(j.bairros.length)} bairros.`; else el('mTx').textContent = 'Ainda não publicada.'; }).catch(() => {});
-  if (ROWS.length) { const ts = ROWS.map(r => r.t), a = Math.min(...ts), b = Math.max(...ts);
-    el('mItbi').textContent = `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
+  const porImovel = META?.origem === 'fazenda_por_imovel';
+  if (el('mAgreg')) el('mAgreg').innerHTML = porImovel
+    ? '<b>Nas abas Visão geral, Comparador e Tendência</b>, os dados vêm da mesma base por imóvel da aba Transações, agregada por rua, mês e tipologia (média de área e de valor, com a contagem de transações). Entram só vendas integrais com R$/m² entre R$ 500 e R$ 200.000, sem duplicatas; terrenos ficam de fora. Como a fonte não informa o tipo de transação, não há filtro de “compra e venda” (existia na base anterior do Data.Rio).'
+    : '<b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.';
+  if (ROWS.length) { const [a, b] = minmax(ROWS, r => r.t);
+    el('mItbi').textContent = (porImovel ? 'Nas abas Visão geral, Comparador e Tendência esta base foi substituída pela base por imóvel (linha abaixo). ' : '') + `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }
   for (const n of ['ipca', 'cdi']) el('m' + n[0].toUpperCase() + n.slice(1)).textContent = IDX
-    ? `Neste painel: ${ymLabel(Math.min(...IDX[n].keys()))} a ${ymLabel(IDX.fim[n])}` + (IDX.origem === 'bcb' ? ' (lido direto do BCB neste acesso)' : `, baixado em ${IDX.gerado_em.split('-').reverse().join('/')}`) + '.'
+    ? `Neste painel: ${ymLabel(minmax(IDX[n].keys())[0])} a ${ymLabel(IDX.fim[n])}` + (IDX.origem === 'bcb' ? ' (lido direto do BCB neste acesso)' : `, baixado em ${IDX.gerado_em.split('-').reverse().join('/')}`) + '.'
     : 'Ainda não carregado (rode scripts/atualizar_indices.py).';
 }
 

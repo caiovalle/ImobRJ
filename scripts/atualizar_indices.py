@@ -18,7 +18,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 BASE = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados"
-INICIO = (2018, 1)   # mesmo início da base de imóveis
+INICIO = (2010, 1)   # cobre a base de imóveis (começa em 2011); o site usa jan/2010 como mês zero
 RAIZ = Path(__file__).resolve().parent.parent
 
 SERIES = {
@@ -82,15 +82,22 @@ def main():
     args = ap.parse_args()
 
     hoje = date.today()
-    ini, fim = f"01/{INICIO[1]:02d}/{INICIO[0]}", hoje.strftime("%d/%m/%Y")
+    # a API limita o intervalo de consulta; pedimos em janelas de até 9 anos e juntamos
+    janelas, a = [], INICIO[0]
+    while a <= hoje.year:
+        b = min(a + 8, hoje.year)
+        janelas.append((f"01/01/{a}", f"31/12/{b}" if b < hoje.year else hoje.strftime("%d/%m/%Y")))
+        a = b + 1
     resultado = {}
     for chave, cfg in SERIES.items():
-        url = args.base.format(codigo=cfg["codigo"]) + f"?formato=json&dataInicial={ini}&dataFinal={fim}"
         print(f"Baixando {cfg['nome']} (SGS {cfg['codigo']})…")
-        try:
-            brutos = baixar(url)
-        except Exception as e:
-            sys.exit(f"ERRO: não consegui baixar {cfg['nome']} do Banco Central ({e}). Mantendo o arquivo atual.")
+        brutos = []
+        for ini, fim in janelas:
+            url = args.base.format(codigo=cfg["codigo"]) + f"?formato=json&dataInicial={ini}&dataFinal={fim}"
+            try:
+                brutos += baixar(url)
+            except Exception as e:
+                sys.exit(f"ERRO: não consegui baixar {cfg['nome']} ({ini} a {fim}) do Banco Central ({e}). Mantendo o arquivo atual.")
         dados = converter(chave, cfg, brutos)
         if hoje.strftime("%Y-%m") in dados:   # o mês em andamento ainda está incompleto (ex.: CDI parcial)
             dados.pop(hoje.strftime("%Y-%m"))

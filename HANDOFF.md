@@ -34,6 +34,9 @@ imobrj/
 ├─ .vscode/settings.json         git.postCommitCommand=push (Commit no VS Code já envia ao GitHub)
 ├─ .github/workflows/atualizar-dados.yml   agendamento semanal (FALHA; ver §5)
 ├─ public/transacoes.js            aba Transações (módulo separado do app.js)
+├─ public/combo.js                 dropdowns com busca por qualquer palavra
+├─ scripts/gerar_dados_agregados.py  itbi_limpo.csv → public/dados.json (formato 2) + meta.json
+├─ scripts/nomes.py, nomes_bairros.json  nomes de bairro com acento
 ├─ public/transacoes/              index.json + um JSON por bairro (gerado; ainda não publicado)
 ├─ scripts/processar_itbi.py       xlsx → itbi_limpo.csv (local)
 ├─ scripts/gerar_transacoes_site.py  itbi_limpo.csv → public/transacoes/
@@ -84,6 +87,22 @@ Pendente / a verificar:
 5. Qualidade de dados (da diretriz): duplicados, padronização de bairros, validar limite de R$/m², confirmar `valor_imóvel` vs `valor_transação`.
 6. Fase 2 (mapa): a base não tem coordenadas; definir geolocalização (limites oficiais de bairros ou geocodificação) e checar termos de uso. Fase 3 (estimativa): só viável de verdade com dados por unidade (§3.3).
 7. Opcional: mostrar mediana/percentis e nº de amostra quando houver dados individuais; relatórios exportáveis.
+
+## 5b. Alterações de 06/11/2026 (v2) — implementadas e testadas com dados de TESTE; falta rodar com os dados reais
+Pedidos do usuário (todos atendidos no código):
+1. **Hover dos gráficos:** `mk()` aplica `interaction {mode:'index', intersect:false}` a gráficos de linha/barra (barra horizontal: `nearest` no eixo y) + `pointHitRadius:16`. Medido: a 60 px da linha, versão antiga = 0 elementos ativos, nova = 1.
+2. **Visão geral desde 2011:** `ANO0 = 2010` (mês t=0 = jan/2010) substitui o 2018 fixo em app.js; novo `scripts/gerar_dados_agregados.py` gera `public/dados.json` (**formato 2**, colunas compactas) + `meta.json` (`origem:"fazenda_por_imovel"`) a partir do `itbi_limpo.csv`. O app aceita o formato antigo (lista de objetos) e o novo (`expandir()`). `atualizar_indices.py` agora começa em 2010 e consulta a API em janelas de até 9 anos. **Efeito colateral importante:** a base por imóvel não tem tipo de transação (sem filtro "compra e venda") e é mais completa que a do Data.Rio, então os números das 3 abas mudam; a aba de metodologia descreve a fonte conforme `meta.json`.
+3. **IPCA/CDI seguem a janela do usuário (De/Até):** `janelaIdx(rows)` compara a média dos primeiros w meses com a dos últimos w (w = min(12, ⌊L/3⌋); mínimo 6 meses de dados) e acumula IPCA/CDI entre os pontos médios (`ceil`). Substituiu o KPI "Variação real 12m" e as tabelas "Últimos 12 meses"/"Período completo" por uma tabela única "no período selecionado". Conferido contra cálculo independente em Python (diferença zero).
+4. **CDI em frase flutuante:** o KPI "Variação real no período (descont. IPCA)" mostra tooltip (hover/foco) com período, IPCA, CDI e "imóvel X% acima/abaixo do CDI".
+5. **Dropdowns com busca por qualquer palavra:** `public/combo.js` transforma `selBairro, selRua, cmpExtra, txBairro, txRua, txTip` em combobox (o `<select>` fica oculto como fonte da verdade: `.value`, `.disabled`, innerHTML e evento `change` continuam funcionando). Casa todas as palavras em qualquer ordem, sem acento, e também a forma expandida da rua (`normRua`: "estrada" acha "Etr …"). Teclado ↑↓ Enter Esc, até 150 itens por vez.
+Outros: nomes de bairro com acento preservados via `scripts/nomes_bairros.json` (156 bairros, extraído do dados.json do Data.Rio; os demais ficam em Title Case sem acento) e módulo `scripts/nomes.py`; corrigido `Math.max(...lista)` (estoura a pilha com centenas de milhares de linhas) com `minmax()`; `.card{min-width:0}` corrige gráfico que não encolhia ao estreitar a janela.
+Testes (sandbox): E2E Playwright com dados sintéticos de 2011–2026; carga com 350 mil linhas agregadas: abre em ~2 s, interações 0,2–0,5 s no desktop de teste (celular não medido; heap ~120 MB).
+**Pendências:**
+- Rodar no PC do usuário, em ordem: `atualizar_indices.py` (índices desde 2010), `gerar_dados_agregados.py` (dados.json formato 2), `gerar_transacoes_site.py` (nomes com acento) e commit. Ver tamanho/linhas impressos; comparar números antes/depois nas 3 abas.
+- `relatorio_qualidade.txt` completo ainda NÃO foi visto.
+- Tamanho real do `dados.json` novo desconhecido (o script avisa se > 25 MB).
+- Desativar workflow semanal do GitHub; checar visual com índices reais; medir no celular.
+- `atualizar_dados.py` (Data.Rio) e o workflow ficam como legado.
 
 ## 6. Como testar mudanças no front (sandbox do Claude)
 Playwright (Python) disponível. Servir `public/` com `python -m http.server`; interceptar CDNs: Chart.js via `npm i chart.js@4.4.1` (`node_modules/chart.js/dist/chart.umd.js`), CSS do Tailwind gerado com `npx tailwindcss@3.4.17 -c tw.config.js` (cores `brand`/`ink` do `index.html`) e injetado no lugar do script do CDN (sem ele a classe `.hidden` não existe e o loader não some). Simular BCB/Data.Rio com servidor local de **valores sintéticos, usados só em teste, nunca no projeto**. Rotas de `viacep` podem ser abortadas.

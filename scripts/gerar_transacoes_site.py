@@ -22,15 +22,12 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from nomes import chave, nome_bairro   # noqa: E402
+
 RAIZ = Path(__file__).resolve().parent.parent
 FONTE = "Prefeitura do Rio de Janeiro, Secretaria de Fazenda – ITBI, transações por imóvel"
 MAX_MB = 8   # aviso se algum arquivo de bairro passar disso
-
-
-def chave(s):
-    """Mesma normalização do app.js (função strip): sem acento, minúsculas, só letras/números/espaço."""
-    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn").lower()
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", s)).strip()
 
 
 def numero(v):
@@ -77,7 +74,7 @@ def main():
                            numero(r["area"]), numero(r["valor"]), flags])
         linhas.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
         arq = chave(bairro).replace(" ", "-") + ".json"
-        dados = {"bairro": bairro.title(), "ruas": ruas, "tipologias": tips,
+        dados = {"bairro": nome_bairro(bairro), "ruas": ruas, "tipologias": tips,
                  "colunas": ["ano", "mes", "rua", "numero", "complemento", "tipologia", "comercial", "area", "valor", "flags"],
                  "linhas": linhas}
         txt = json.dumps(dados, ensure_ascii=False, separators=(",", ":"))
@@ -86,7 +83,7 @@ def main():
         if mb > MAX_MB:
             grandes.append((bairro, mb))
         publicadas += len(linhas)
-        indice.append({"nome": bairro.title(), "nb": chave(bairro), "arquivo": arq, "n": len(linhas),
+        indice.append({"nome": nome_bairro(bairro), "nb": chave(bairro), "arquivo": arq, "n": len(linhas),
                        "ano_min": linhas[0][0], "ano_max": linhas[-1][0]})
     anos = [i["ano_min"] for i in indice] + [i["ano_max"] for i in indice]
     (saida / "index.json").write_text(json.dumps({

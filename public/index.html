@@ -16,7 +16,7 @@ tailwind.config = { theme: { extend: {
 </script>
 <style>
   body { background:#f7f5f2 }
-  .card { background:#fff; border:1px solid #ece8e3; border-radius:1.25rem; padding:1.25rem; box-shadow:0 1px 2px rgba(28,36,51,.04) }
+  .card { background:#fff; border:1px solid #ece8e3; border-radius:1.25rem; padding:1.25rem; box-shadow:0 1px 2px rgba(28,36,51,.04) ; min-width:0 }
   .chart-box { position:relative; height:300px }
   .tab-btn { padding:.5rem 1rem; border-radius:9999px; font-weight:600; font-size:.875rem; color:#4b5563; white-space:nowrap }
   .tab-btn:hover { background:#f1ede8 }
@@ -228,7 +228,7 @@ tailwind.config = { theme: { extend: {
         <div class="grid lg:grid-cols-2 gap-6">
           <div class="card"><h3 class="font-bold mb-3">Como os dados do ITBI são tratados</h3>
             <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
-              <li><b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
+              <li id="mAgreg"><b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.</li>
               <li>Mantemos só a transação principal <b>“Compra e venda”</b> e anos a partir de 2018.</li>
               <li>Descartamos registros sem área ou valor, e com R$/m² fora de <b>R$ 500 a R$ 200.000</b>, para eliminar erros de digitação. O limite superior é uma estimativa nossa: os dados só provam que o erro está entre R$ 142 mil e R$ 379 mil/m².</li>
               <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. Textos são padronizados (maiúsculas/minúsculas); logradouros abreviados da fonte são expandidos só para a busca.</li>
@@ -287,5 +287,6 @@ tailwind.config = { theme: { extend: {
 
 <script src="app.js"></script>
 <script src="transacoes.js"></script>
+<script src="combo.js"></script>
 </body>
 </html>

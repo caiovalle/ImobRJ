@@ -90,14 +90,14 @@ function txAtualizar(soPagina) {
     k('Mediana do R$/m²', ok.length ? brl(quantil(m2, .5)) : '—', poucos ? 'amostra pequena: use com cautela' : 'vendas integrais') +
     k('Faixa típica do R$/m²', ok.length ? `${brl(quantil(m2, .25))} – ${brl(quantil(m2, .75))}` : '—', 'percentis 25 e 75') +
     k('Mediana do valor declarado', ok.length ? brl(quantil(val, .5)) : '—', '') +
-    k('Período', rows.length ? `${MESES[rows.reduce((a, l) => l.t < a.t ? l : a).mes - 1]}/${Math.min(...rows.map(l => l.ano))} a ${MESES[rows.reduce((a, l) => l.t > a.t ? l : a).mes - 1]}/${Math.max(...rows.map(l => l.ano))}` : '—', '');
+    k('Período', rows.length ? `${txMes(minmax(rows, l => l.t)[0])} a ${txMes(minmax(rows, l => l.t)[1])}` : '—', '');
   const predio = $('txPredio').checked;
   const ordem = $('txOrdem').value;
   let linhas, cab, corpo;
   if (predio) {
     const g = new Map();
     for (const l of rows) { if (l.numero === '0' || l.numero === '') continue; const key = l.rua + '|' + l.numero; (g.get(key) || g.set(key, []).get(key)).push(l); }
-    linhas = [...g.values()].map(a => { const o = a.filter(l => !l.fl); return { rua: a[0].rua, numero: a[0].numero, n: a.length, de: Math.min(...a.map(l => l.t)), ate: Math.max(...a.map(l => l.t)), m2: o.length ? quantil(o.map(l => l.valor / l.area), .5) : null, valor: o.length ? quantil(o.map(l => l.valor), .5) : null }; });
+    linhas = [...g.values()].map(a => { const o = a.filter(l => !l.fl); return { rua: a[0].rua, numero: a[0].numero, n: a.length, de: minmax(a, l => l.t)[0], ate: minmax(a, l => l.t)[1], m2: o.length ? quantil(o.map(l => l.valor / l.area), .5) : null, valor: o.length ? quantil(o.map(l => l.valor), .5) : null }; });
     linhas.sort((a, b) => b.n - a.n || d.ruas[a.rua].localeCompare(d.ruas[b.rua]));
     cab = ['Logradouro', 'Nº', 'Vendas', 'Período', 'Mediana R$/m²', 'Mediana valor'];
     corpo = l => `<tr class="border-b last:border-0 hover:bg-gray-50 cursor-pointer" data-rua="${l.rua}" data-num="${esc(l.numero)}"><td class="py-2 pr-3">${esc(d.ruas[l.rua])}</td><td>${esc(l.numero)}</td><td>${l.n}</td><td>${txMes(l.de)}–${txMes(l.ate)}</td><td>${brl(l.m2)}</td><td>${brl(l.valor)}</td></tr>`;

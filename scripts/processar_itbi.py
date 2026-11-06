@@ -6,8 +6,9 @@ Entrada : pasta com os .xlsx (ex.: 2011-2018, 2019-2024, 2025 em diante)
 Saída   : <pasta>/saida/itbi_limpo.csv          base completa, uma linha por transação, com marcações
           <pasta>/saida/relatorio_qualidade.txt  o que foi encontrado e quantas linhas cada regra marcou
 
-IMPORTANTE (LGPD): itbi_limpo.csv contém número e complemento (apartamento). Ele fica só no seu computador:
-NÃO coloque a pasta de saída dentro do projeto e NÃO envie esse arquivo ao GitHub.
+IMPORTANTE: o itbi_limpo.csv COMPLETO (todas as colunas, linhas marcadas, terrenos etc.) fica só no seu computador:
+NÃO coloque a pasta de saída dentro do projeto e NÃO envie esse arquivo ao GitHub. O que é publicado no site (inclusive o
+apartamento, por decisão do responsável pelo projeto) é gerado depois por scripts/gerar_transacoes_site.py.
 
 Nenhuma linha é apagada: problemas viram marcações (colunas aviso_*). Os xlsx originais não são alterados.
 
@@ -204,7 +205,7 @@ def main():
     texto = "\n".join(rel)
     (saida / "relatorio_qualidade.txt").write_text(texto, encoding="utf-8")
     print("\n" + texto)
-    print(f"\nPronto. Arquivos em {saida}\nLEMBRETE: itbi_limpo.csv tem apartamento; não envie ao GitHub. Envie ao Claude só o relatorio_qualidade.txt.")
+    print(f"\nPronto. Arquivos em {saida}\nNOTA: o itbi_limpo.csv COMPLETO fica só no seu computador (não vai ao GitHub). O que aparece no site, inclusive o apartamento,\nvem dos arquivos de public/transacoes, gerados pelo próximo passo: python scripts/gerar_transacoes_site.py\nEnvie ao Claude só o relatorio_qualidade.txt.")
 
 
 if __name__ == "__main__":
