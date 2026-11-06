@@ -94,6 +94,7 @@ function start(raw) {
   bindEvents(); renderChips(); TAB = abaDoEndereco(); marcarAba(); render();
   loadIndices().finally(() => { renderMethodAuto(); if (TAB !== 'history') render(); });
   loadMedianas().then(() => { if (MED && TAB !== 'history') render(); });
+  loadAreas().then(() => { if (AREAS && TAB !== 'history') render(); });
 }
 
 // ---------- Filtros / agregações ----------
@@ -129,6 +130,64 @@ function medOf(gs) {              // mediana de todos os valores dos grupos (nul
   return { n, m2: m * gs[0].passo };
 }
 const tsub = (arr, pred) => arr && arr.filter(pred);
+
+// ---------- Faixas de metragem (areas.json: área e R$/m² de cada venda, por bairro/tipologia/tipo/mês) ----------
+// Escolher uma metragem = usar as vendas na faixa metragem ± FAIXA_TOL m² (ex.: 70 m² → 65 a 75 m²).
+// Cidade e bairro usam areas.json; rua usa o arquivo do bairro (transacoes/<bairro>.json, só vendas integrais).
+const FAIXA_TOL = 5;
+const faixaDe = c => [Math.max(0, c - FAIXA_TOL), c + FAIXA_TOL];
+const faixaTxt = c => { const [lo, hi] = faixaDe(c); return `${num(lo)} a ${num(hi)} m²`; };
+let AREAS = null, AREAS_ST = '';  // AREAS = grupos {nb, tipologia, tipo, ano, t, a (áreas ordenadas), v (R$/m², mesma ordem), passo}
+async function loadAreas() {
+  if (AREAS || AREAS_ST) return; AREAS_ST = 'carregando';
+  try {
+    const r = await fetch('areas.json', { cache: 'no-cache' }); if (!r.ok) throw new Error(r.status);
+    const j = await r.json(), passo = j.passo || 10;
+    AREAS = j.grupos.map(g => {
+      const a = new Int32Array(g[5].length); let acc = 0; g[5].forEach((d, i) => { acc += d; a[i] = acc; });
+      return { nb: j.nbs[g[0]], tipologia: j.tipologias[g[1]], tipo: g[2] ? 'Comercial' : 'Residencial', ano: g[3], t: (g[3] - ANO0) * 12 + g[4] - 1, a, v: Int32Array.from(g[6]), passo };
+    });
+    AREAS_ST = 'ok';
+  } catch (e) { AREAS = null; AREAS_ST = 'erro'; }
+}
+const areasFiltro = gs => gs.filter(g => (!F.tipo || g.tipo === F.tipo) && (!F.tip || g.tipologia === F.tip) && g.ano >= F.de && g.ano <= F.ate);
+// grupos do local atual; null enquanto carrega (rua: lê o arquivo do bairro e chama render() quando chegar)
+const AREAS_RUA = new Map();
+function areasEscopo(sc = S) {
+  if (sc.lvl !== 'rua') return AREAS ? areasFiltro(sc.lvl === 'cidade' ? AREAS : AREAS.filter(g => g.nb === sc.nb)) : null;
+  const k = sc.nb + '|' + sc.nl;
+  if (!AREAS_RUA.has(k)) {
+    AREAS_RUA.set(k, null);
+    (async () => {
+      await txCarregarIndice(); const b = TX.idx?.bairros.find(x => x.nb === sc.nb); if (!b) throw new Error('bairro');
+      const d = await txCarregarBairro(b.arquivo), ris = new Set(d.ruas.map((r, i) => normRua(r) === sc.nl ? i : -1).filter(i => i >= 0)), m = new Map();
+      for (const l of d.linhas) {
+        if (l.fl || !(l.area > 0) || !ris.has(l.rua)) continue;
+        const gk = l.t + '|' + l.tip + '|' + l.com;
+        (m.get(gk) || m.set(gk, { nb: sc.nb, tipologia: d.tipologias[l.tip], tipo: l.com ? 'Comercial' : 'Residencial', ano: l.ano, t: (l.ano - ANO0) * 12 + l.mes - 1, ps: [], passo: 1 }).get(gk)).ps.push([l.area, l.valor / l.area]);
+      }
+      AREAS_RUA.set(k, [...m.values()].map(g => { g.ps.sort((x, y) => x[0] - y[0]); g.a = g.ps.map(p => p[0]); g.v = g.ps.map(p => p[1]); delete g.ps; return g; }));
+    })().catch(() => AREAS_RUA.set(k, [])).finally(() => render());
+  }
+  const gs = AREAS_RUA.get(k); return gs ? areasFiltro(gs) : null;
+}
+// mediana do R$/m² das vendas com área entre lo e hi (null se nenhuma; m2 null se < min vendas)
+function medFaixa(gs, lo, hi, min = MED_MIN) {
+  const vals = [];
+  for (const g of gs) {
+    const a = g.a; let i = 0, j = a.length; while (i < j) { const h = (i + j) >> 1; if (a[h] < lo) i = h + 1; else j = h; }   // 1ª venda com área ≥ lo
+    for (; i < a.length && a[i] <= hi; i++) vals.push(g.v[i] * g.passo);
+  }
+  const n = vals.length; if (!n) return null;
+  if (n < min) return { n, m2: null };
+  vals.sort((x, y) => x - y);
+  return { n, m2: n % 2 ? vals[(n - 1) / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2 };
+}
+// R$/m² mediano da faixa por período do eixo
+function seriesFaixa(gs, axis, lo, hi) {
+  const gm = new Map(); for (const g of gs) { const k = key(g.t); (gm.get(k) || gm.set(k, []).get(k)).push(g); }
+  return axis.map(k => gm.has(k) ? medFaixa(gm.get(k), lo, hi) : null);
+}
 
 function agg(rows, md) {        // médias ponderadas pelo nº de transações; com md (grupos de mediana), m2 = MEDIANA
   let n = 0, v = 0, m = 0, a = 0;
@@ -253,9 +312,7 @@ function renderOverview(sc) {
     (IDX ? kpiReal(janelaIdx(sc, md)) : '');
   $('tPreco').textContent = md ? 'Preço mediano por m² ao longo do tempo' : 'Preço médio por m² ao longo do tempo (rua: média)';
 
-  const axis = makeAxis(B), s = series(sc, axis, md);
-  mk('cPreco', { type: 'line', data: { labels: axis.map(keyLabel), datasets: [lineDs('R$/m²', s.map(p => p?.m2 ?? null), COLORS[0], { fill: true, backgroundColor: 'rgba(239,75,63,.10)' })] },
-    options: { plugins: { legend: { display: false } }, scales: { y: yBRL } } });
+  renderPrecoFaixas(sc, md, lastT);
 
   const tm = {}; sc.forEach(r => tm[r.tipologia] = (tm[r.tipologia] || 0) + r.transacoes);
   let te = Object.entries(tm).sort((x, y) => y[1] - x[1]); const rest = te.slice(5).reduce((s, x) => s + x[1], 0);
@@ -265,6 +322,67 @@ function renderOverview(sc) {
   const am = {}; sc.forEach(r => am[r.ano] = (am[r.ano] || 0) + r.transacoes);
   mk('cAno', { type: 'bar', data: { labels: Object.keys(am), datasets: [{ label: 'Transações', data: Object.values(am), backgroundColor: '#1e3a5f', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } } } });
   renderRank();
+}
+
+// ---------- Visão geral: gráfico do R$/m² com uma linha por faixa de metragem ----------
+const FX_K = 'imobrj_faixas', FX_MAX = 8;
+const FX_CORES = ['#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#0ea5e9', '#db2777', '#65a30d', '#78716c'];
+let FX = (() => {
+  try { const j = JSON.parse(localStorage.getItem(FX_K)); if (j && Array.isArray(j.lista)) return { todas: j.todas !== false, lista: j.lista.filter(f => f.c >= 10).slice(0, FX_MAX) }; } catch (e) {}
+  return { todas: true, lista: [{ c: 50, on: true }, { c: 70, on: true }, { c: 100, on: true }, { c: 150, on: false }] };
+})();
+const fxSalvar = () => { try { localStorage.setItem(FX_K, JSON.stringify(FX)); } catch (e) {} };
+const fxCor = i => FX_CORES[i % FX_CORES.length];
+function fxAdicionar() {
+  const c = Math.round(+$('fxNova').value);
+  if (!(c >= 10 && c <= 5000)) return toast('Digite uma metragem entre 10 e 5.000 m².');
+  const ja = FX.lista.find(f => f.c === c);
+  if (ja) ja.on = true;
+  else { if (FX.lista.length >= FX_MAX) return toast(`Máximo de ${FX_MAX} faixas. Remova uma (×) para adicionar outra.`); FX.lista.push({ c, on: true }); FX.lista.sort((a, b) => a.c - b.c); }
+  $('fxNova').value = ''; fxSalvar(); render();
+}
+function renderFaixasBox() {
+  const chip = (on, cor, txt, attrs, del = '') => `<span class="inline-flex items-center rounded-full border ${on ? 'bg-white border-gray-300 text-ink' : 'bg-gray-50 border-gray-200 text-gray-400'}">
+    <button type="button" ${attrs} class="inline-flex items-center gap-1.5 pl-2.5 ${del ? 'pr-1' : 'pr-2.5'} py-1 font-semibold" aria-pressed="${on}">
+      <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${on ? cor : '#d1d5db'}"></span>${txt}</button>${del}</span>`;
+  $('fxBox').innerHTML = `<span class="text-gray-500 mr-1">Mostrar:</span>` +
+    chip(FX.todas, COLORS[0], 'Todas as metragens', 'data-fx="todas"') +
+    FX.lista.map((f, i) => chip(f.on, fxCor(i), `${num(f.c)} m² <span class="font-normal text-gray-500">(${faixaTxt(f.c).replace(' m²', '')})</span>`, `data-fx="${i}"`,
+      `<button type="button" class="fxDel pr-2 pl-0.5 py-1 text-gray-400 hover:text-red-600" data-i="${i}" aria-label="Remover faixa de ${num(f.c)} m²">×</button>`)).join('') +
+    `<span class="inline-flex items-center gap-1"><input id="fxNova" type="number" inputmode="numeric" min="10" step="1" placeholder="m²" class="sel w-20 text-right py-1" aria-label="Nova metragem">
+      <button type="button" id="fxAdd" class="rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold px-2.5 py-1"><i class="fa-solid fa-plus mr-1"></i>Faixa</button></span>
+    <span class="basis-full text-[11px] text-gray-400">Cada faixa usa as vendas com a metragem escolhida <b>± ${FAIXA_TOL} m²</b>. Toque numa faixa para mostrar ou esconder a linha.</span>`;
+}
+function renderPrecoFaixas(sc, md, lastT) {
+  renderFaixasBox();
+  const axis = makeAxis(B), labels = axis.map(keyLabel), ativas = FX.lista.map((f, i) => ({ ...f, i })).filter(f => f.on);
+  const todas = FX.todas || !ativas.length, ds = [];
+  if (todas) { const s = series(sc, axis, md); ds.push(lineDs(md ? 'Todas as metragens (mediana)' : 'Todas as metragens (média)', s.map(p => p?.m2 ?? null), COLORS[0],
+    ativas.length ? { borderWidth: 2.5, _n: s.map(p => p?.n ?? null) } : { fill: true, backgroundColor: 'rgba(239,75,63,.10)', _n: s.map(p => p?.n ?? null) })); }
+  const gs = ativas.length ? areasEscopo() : null, carregando = ativas.length && !gs && AREAS_ST !== 'erro';
+  const resumo = [];
+  if (gs) {
+    const u12 = gs.filter(g => g.t > lastT - 12), base12 = todas ? agg(sc.filter(r => r.t > lastT - 12), tsub(md, g => g.t > lastT - 12)) : null;
+    for (const f of ativas) {
+      const [lo, hi] = faixaDe(f.c), s = seriesFaixa(gs, axis, lo, hi);
+      ds.push(lineDs(`${num(f.c)} m² (${faixaTxt(f.c)})`, s.map(p => p?.m2 ?? null), fxCor(f.i), { _n: s.map(p => p?.n ?? null) }));
+      const r12 = medFaixa(u12, lo, hi);
+      resumo.push({ cor: fxCor(f.i), nome: `${num(f.c)} m² <span class="text-gray-400">(${faixaTxt(f.c)})</span>`, n: r12?.n || 0, m2: r12?.m2 ?? null, vs: r12?.m2 && base12?.m2 ? (r12.m2 / base12.m2 - 1) * 100 : null });
+    }
+    if (todas && base12) resumo.unshift({ cor: COLORS[0], nome: 'Todas as metragens', n: base12.n, m2: base12.m2, vs: null });
+  }
+  $('tPreco').textContent = (md ? 'Preço mediano por m² ao longo do tempo' : 'Preço médio por m² ao longo do tempo (rua: média)') + (ativas.length ? ', por faixa de metragem' : '');
+  mk('cPreco', { type: 'line', data: { labels, datasets: ds },
+    options: { plugins: { legend: { display: ds.length > 1, position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: c => { const n = c.dataset._n?.[c.dataIndex]; return `${c.dataset.label}: ${brl(c.parsed.y)}/m²` + (n ? ` · ${num(n)} venda${n > 1 ? 's' : ''}` : ''); } } } },
+      scales: { y: yBRL } } });
+  const aviso = carregando ? '<p class="text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Carregando as vendas por metragem…</p>'
+    : ativas.length && AREAS_ST === 'erro' && S.lvl !== 'rua' ? '<p class="text-amber-700">Não foi possível carregar areas.json; as linhas por faixa não estão disponíveis.</p>' : '';
+  $('fxResumo').innerHTML = aviso + (resumo.length ? `<div class="overflow-x-auto"><table class="w-full min-w-[420px]"><thead class="text-left text-gray-500 border-b"><tr>
+      <th class="py-1.5 pr-3 font-medium">Últimos 12 meses</th><th class="pr-3 font-medium">Vendas</th><th class="pr-3 font-medium">R$/m² ${md ? 'mediano' : 'médio'}</th><th class="font-medium">vs. todas</th></tr></thead><tbody>
+      ${resumo.map(r => `<tr class="border-b last:border-0"><td class="py-1.5 pr-3"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle" style="background:${r.cor}"></span>${r.nome}</td>
+        <td class="pr-3">${num(r.n)}</td><td class="pr-3">${r.m2 == null ? `<span class="text-gray-400">${r.n ? 'poucas vendas' : 'sem vendas'}</span>` : brl(r.m2)}</td><td class="${pctColor(r.vs)}">${r.vs == null ? '—' : pct(r.vs)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="text-[11px] text-gray-400 mt-1">Faixas: mediana do R$/m² das vendas integrais na faixa; períodos com menos de ${MED_MIN} vendas ficam em branco no gráfico${S.lvl === 'rua' ? ' (numa rua isolada, use Agrupar: Trimestral)' : ''}.</p>` : '');
 }
 
 function renderRank() {
@@ -391,12 +509,20 @@ function ipcaAA(t0, t1) {
   const f = fator('ipca', a, b); return f == null ? null : { aa: (Math.pow(f, 12 / (b - a)) - 1) * 100, t0: a, t1: b };
 }
 function renderTrend(sc) {
-  const axis = makeAxis(B), s = series(sc, axis, medScope()), y = s.map(p => p?.m2 ?? null), reg = regress(y);
+  const area = areaGet(), [flo, fhi] = faixaDe(area);
+  $('tFaixaTxt').textContent = faixaTxt(area);
+  const usaFx = $('tFaixa').checked, gs = usaFx ? areasEscopo() : null;
+  if (usaFx && !gs && AREAS_ST !== 'erro') {
+    $('trendKpis').innerHTML = `<div class="card col-span-full text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando as vendas por metragem…</div>`;
+    $('tAreaInfo').innerHTML = ''; return;
+  }
+  const fx = usaFx && !!gs;
+  const axis = makeAxis(B), s = fx ? seriesFaixa(gs, axis, flo, fhi) : series(sc, axis, medScope()), y = s.map(p => p?.m2 ?? null), reg = regress(y);
   const H = Math.round(perYear()), ext = Array.from({ length: H }, (_, i) => axis.at(-1) + i + 1), labels = [...axis, ...ext].map(keyLabel);
-  const area = areaGet(), med = usaMediana();
+  const med = fx || usaMediana();
   if (+$('tArea').value !== area && document.activeElement !== $('tArea')) $('tArea').value = area;
   if (!reg) {
-    $('trendKpis').innerHTML = `<div class="card col-span-full text-gray-500">Poucos períodos com dados (mín. 6) para calcular tendência. Tente agrupar por <b>Trimestral</b> ou ampliar o intervalo/local.</div>`;
+    $('trendKpis').innerHTML = `<div class="card col-span-full text-gray-500">Poucos períodos com dados (mín. 6) para calcular tendência${fx ? ` com vendas de ${faixaTxt(area)}` : ''}. Tente agrupar por <b>Trimestral</b>${fx ? ', desmarcar <b>“Só vendas de…”</b>' : ''} ou ampliar o intervalo/local.</div>`;
     $('tAreaInfo').innerHTML = '';
     Object.values(charts).forEach(c => c.destroy()); return;
   }
@@ -422,15 +548,15 @@ function renderTrend(sc) {
       <div class="text-xl font-bold ${c}">${v}</div>${sub ? `<div class="text-[11px] text-gray-500 mt-1 leading-snug">${sub}</div>` : ''}
       <p id="${id}" class="${TREND_HELP.has(id) ? '' : 'hidden'} text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed">${TREND_AJUDA[id]}</p></div>`;
   const projLbl = keyLabel(ext.at(-1));
-  $('trendKpis').innerHTML = k('hDir', 'Direção', `<i class="fa-solid ${dir[2]} mr-1"></i>${dir[0]}`, dir[1], `${med ? 'mediana' : 'média'} do R$/m²`) +
+  $('trendKpis').innerHTML = k('hDir', 'Direção', `<i class="fa-solid ${dir[2]} mr-1"></i>${dir[0]}`, dir[1], `${med ? 'mediana' : 'média'} do R$/m²${fx ? ` · ${faixaTxt(area)}` : ''}`) +
     k('hVar', 'Variação anual estimada', pct(annual) + ' a.a.', pctColor(annual), varSub) +
     k('hProj', `Projeção p/ ${projLbl}`, brl(proj) + '/m²', '', `≈ ${brl(proj * area)} para ${num(area)} m²`) +
     k('hR2', 'Confiança (R²)', (reg.r2 * 100).toFixed(0) + '%', '', reg.r2 >= 0.7 ? 'tendência clara' : reg.r2 >= 0.4 ? 'tendência moderada' : 'série oscilante');
   $('tAreaInfo').innerHTML = `Imóvel de <b>${num(area)} m²</b>: valor estimado hoje ≈ <b>${brl(fitLast * area)}</b> (${brl(fitLast)}/m² na linha de tendência) · projeção p/ ${projLbl} ≈ <b>${brl(proj * area)}</b>` +
-    (med ? '' : ' <span class="text-amber-700">· na rua o R$/m² é média (poucas vendas), não mediana</span>');
+    (fx ? ` <span class="text-gray-500">· só vendas de ${faixaTxt(area)}</span>` : med ? ' <span class="text-gray-500">· todas as metragens</span>' : ' <span class="text-amber-700">· na rua o R$/m² é média (poucas vendas), não mediana</span>');
   const un = TREND_UN === 'imovel', mult = v => v == null ? null : un ? v * area : v;
   $('tTrendTit').textContent = un ? `Tendência e projeção do valor de um imóvel de ${num(area)} m²` : 'Tendência e projeção de preço/m²';
-  const nomeSerie = (med ? 'R$/m² (mediana)' : 'R$/m² (média)') + (un ? ` × ${num(area)} m²` : '');
+  const nomeSerie = (med ? 'R$/m² (mediana' : 'R$/m² (média') + (fx ? `, ${faixaTxt(area)})` : ')') + (un ? ` × ${num(area)} m²` : '');
   mk('cTrend', { type: 'line', data: { labels, datasets: [
     lineDs(nomeSerie, [...y, ...ext.map(() => null)].map(mult), COLORS[0], { pointRadius: 2 }),
     lineDs('Média móvel (3)', [...movAvg(y), ...ext.map(() => null)].map(mult), '#14b8a6', { borderWidth: 1.5 }),
@@ -567,6 +693,12 @@ function bindEvents() {
   bind('fTipo', v => F.tipo = v); bind('fTip', v => F.tip = v); bind('fDe', v => F.de = +v); bind('fAte', v => F.ate = +v);
   bind('fGran', v => F.gran = +v); bind('cmpExtra', () => {}); bind('cmpMode', () => {});
   $('rankMetric').onchange = renderRank;
+  $('fxBox').addEventListener('click', e => {
+    const d = e.target.closest('.fxDel'); if (d) { FX.lista.splice(+d.dataset.i, 1); fxSalvar(); return render(); }
+    const b = e.target.closest('[data-fx]'); if (b) { if (b.dataset.fx === 'todas') FX.todas = !FX.todas; else FX.lista[+b.dataset.fx].on = !FX.lista[+b.dataset.fx].on; fxSalvar(); return render(); }
+    if (e.target.closest('#fxAdd')) fxAdicionar();
+  });
+  $('fxBox').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'fxNova') fxAdicionar(); });
   $('cmpIpca').addEventListener('change', () => { if ($('cmpIpca').checked) $('cmpMode').value = 'idx'; render(); });
   $('cmpCdi').addEventListener('change', () => { if ($('cmpCdi').checked) $('cmpMode').value = 'idx'; render(); });
   $('selBairro').onchange = e => { const b = BAIRROS.find(x => x.nb === e.target.value); b ? selecionar({ lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }) : $('btnCidade').click(); };
@@ -587,6 +719,7 @@ function bindEvents() {
   // aba Tendência: área compartilhada com a calculadora, unidade do gráfico e explicações (clique, funciona no celular)
   $('tArea').value = areaGet();
   $('tArea').addEventListener('input', () => { if (+$('tArea').value >= 10) { areaSet($('tArea').value); if (TAB === 'trend') render(); } });
+  $('tFaixa').addEventListener('change', () => { if (TAB === 'trend') render(); });
   $('tab-trend').addEventListener('click', e => {
     const h = e.target.closest('.tHelp');
     if (h) { const el = $(h.dataset.for); el.classList.toggle('hidden'); TREND_HELP[el.classList.contains('hidden') ? 'delete' : 'add'](h.dataset.for); return; }
@@ -598,7 +731,7 @@ function renderMethodAuto() {
   fetch('transacoes/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) el('mTx').textContent = `Neste painel: ${num(j.total)} transações, ${j.ano_min}–${j.ano_max}, ${num(j.bairros.length)} bairros.`; else el('mTx').textContent = 'Ainda não publicada.'; }).catch(() => {});
   const porImovel = META?.origem === 'fazenda_por_imovel';
   if (el('mAgreg')) el('mAgreg').innerHTML = porImovel
-    ? '<b>Nas abas Visão geral, Comparador e Tendência</b>, os dados vêm da mesma base por imóvel da aba Transações, agregada por rua, mês e tipologia. O <b>preço por m² é a mediana</b> das transações (bairro e cidade; períodos com menos de ' + MED_MIN + ' vendas ficam em branco); para uma rua isolada, que tem poucas vendas, usa-se a média ponderada. Entram só vendas integrais com R$/m² entre R$ 500 e R$ 200.000, sem duplicatas; terrenos ficam de fora. Como a fonte não informa o tipo de transação, não há filtro de “compra e venda” (a base antiga do Data.Rio, usada até 2026, tinha).'
+    ? '<b>Nas abas Visão geral, Comparador e Tendência</b>, os dados vêm da mesma base por imóvel da aba Transações, agregada por rua, mês e tipologia. O <b>preço por m² é a mediana</b> das transações (bairro e cidade; períodos com menos de ' + MED_MIN + ' vendas ficam em branco); para uma rua isolada, que tem poucas vendas, usa-se a média ponderada. Entram só vendas integrais com R$/m² entre R$ 500 e R$ 200.000, sem duplicatas; terrenos ficam de fora. Como a fonte não informa o tipo de transação, não há filtro de “compra e venda” (a base antiga do Data.Rio, usada até 2026, tinha). <b>Faixas de metragem</b> (Visão geral, Tendência, Comprar ou alugar, Anúncios e Transações): ao escolher uma metragem, entram as vendas com essa área ± ' + FAIXA_TOL + ' m² (ex.: 70 m² → 65 a 75 m²), com a mediana do R$/m² dessas vendas.'
     : '<b>Nas abas Visão geral, Comparador e Tendência</b>, cada registro é uma média: o dataset do Data.Rio traz, por logradouro e mês, a média de área e de valor de várias transações (com o total de transações do grupo). Não há dados por imóvel.';
   if (ROWS.length) { const [a, b] = minmax(ROWS, r => r.t);
     el('mItbi').textContent = `Neste painel: ${num(ROWS.length)} registros, ${ymLabel(a)} a ${ymLabel(b)}, ${num(BAIRROS.length)} bairros.`; }

@@ -48,6 +48,10 @@ function txMontarControles() {
   $('txBairro').onchange = () => txTrocarBairro(null);
   ['txRua', 'txTip', 'txDe', 'txAte', 'txVmin', 'txVmax', 'txAmin', 'txAmax', 'txBusca', 'txPredio', 'txOrdem'].forEach(id =>
     $(id).addEventListener(id === 'txBusca' || /min|max/.test(id) ? 'input' : 'change', () => { TX.pagina = 0; txAtualizar(); }));
+  $('txArea').addEventListener('input', () => {        // metragem ± 5 m² → preenche área mín. e máx.
+    const c = +$('txArea').value.replace(',', '.'); if (!(c >= 10)) return;
+    const [lo, hi] = faixaDe(c); $('txAmin').value = lo; $('txAmax').value = hi; TX.pagina = 0; txAtualizar();
+  });
   $('txPrev').onclick = () => { TX.pagina = Math.max(0, TX.pagina - 1); txAtualizar(true); };
   $('txNext').onclick = () => { TX.pagina++; txAtualizar(true); };
   $('txConteudo').addEventListener('click', e => {      // clicar num prédio filtra por ele
@@ -59,7 +63,7 @@ function txMontarControles() {
 
 async function txTrocarBairro(nlRua) {
   const arq = $('txBairro').value; TX.pagina = 0;
-  $('txBusca').value = ''; $('txVmin').value = $('txVmax').value = $('txAmin').value = $('txAmax').value = ''; $('txTip').value = ''; $('txPredio').checked = false;
+  $('txBusca').value = ''; $('txVmin').value = $('txVmax').value = $('txAmin').value = $('txAmax').value = $('txArea').value = ''; $('txTip').value = ''; $('txPredio').checked = false;
   if (!arq) { TX.cur = null; return renderTx(); }
   $('txConteudo').innerHTML = '<div class="card text-sm text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando transações do bairro…</div>';
   try { TX.cur = await txCarregarBairro(arq); }

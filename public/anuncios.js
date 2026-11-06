@@ -216,7 +216,7 @@ function anCamadas(d, a) {
   const C = [];
   if (ri >= 0 && numero) { const [de, ate] = per(36); C.push({ k: 'predio', nome: `Mesmo prédio (${pretty(d.ruas[ri])}, ${numero})`, min: 3, ...anStats(base.filter(l => l.rua === ri && l.numero.replace(/\D/g, '') === numero && l.t >= de), de, ate) }); }
   if (ri >= 0) { const [de, ate] = per(24); C.push({ k: 'rua', nome: `Mesma rua (${pretty(d.ruas[ri])})`, min: 5, ...anStats(base.filter(l => l.rua === ri && l.t >= de), de, ate) }); }
-  { const [de, ate] = per(12); C.push({ k: 'faixa', nome: `${d.bairro}, ${num(a.area * .75)} a ${num(a.area * 1.25)} m²`, min: 8, ...anStats(base.filter(l => l.t >= de && l.area >= a.area * .75 && l.area <= a.area * 1.25), de, ate) }); }
+  { const [de, ate] = per(24), [lo, hi] = faixaDe(a.area); C.push({ k: 'faixa', nome: `${d.bairro}, ${faixaTxt(a.area)}`, min: 8, ...anStats(base.filter(l => l.t >= de && l.area >= lo && l.area <= hi), de, ate) }); }
   { const [de, ate] = per(12); C.push({ k: 'bairro', nome: `${d.bairro} (todo o bairro)`, min: 5, ...anStats(base.filter(l => l.t >= de), de, ate) }); }
   const ref = C.find(c => c.n >= c.min) || C.filter(c => c.n).at(-1) || null;
   return { C, ref, tip: ti >= 0 ? tipNome : 'residencial', ruaAchada: ri >= 0 ? pretty(d.ruas[ri]) : null, ruaPedida: !!nr };
@@ -272,7 +272,7 @@ function anAvaliar() {
     <p class="text-sm text-gray-700 leading-relaxed">${texto}${mensal > 0 ? `<br>Condomínio + IPTU: <b>${brl(mensal)}/mês</b>${alug ? ` · total com aluguel: <b>${brl(a.preco + mensal)}/mês</b>` : ''}.` : ''}</p>
     ${cam.ruaPedida && !cam.ruaAchada ? `<p class="text-xs text-amber-700">Não achei “${esc(a.rua)}” entre as ruas com vendas em ${esc(a.bairro)}. Escolha uma das sugestões do campo Rua.</p>` : ''}
     <div class="overflow-x-auto"><table class="w-full text-sm min-w-[560px]"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2 pr-3">Comparado com (${esc(cam.tip.toLowerCase())})</th><th class="pr-3">Vendas</th><th class="pr-3">Mediana R$/m²</th><th class="pr-3">Faixa típica</th><th>Anúncio</th></tr></thead><tbody>${linhas}</tbody></table></div>
-    <p class="text-[11px] text-gray-400">Prédio: últimos 36 meses · rua: 24 meses · bairro e faixa de área: 12 meses. Faixa típica = metade central das vendas (percentis 25 a 75). Só vendas integrais.</p>
+    <p class="text-[11px] text-gray-400">Prédio: últimos 36 meses · rua e faixa de área (área do anúncio ± 5 m²): 24 meses · bairro: 12 meses. Faixa típica = metade central das vendas (percentis 25 a 75). Só vendas integrais.</p>
   </div>`;
 }
 
