@@ -10,9 +10,8 @@ C:\Projetos\ITBI Git\
 │  ├─ public\                     <- site publicado
 │  │  ├─ index.html, app.js, calc.js, transacoes.js, anuncios.js, combo.js
 │  │  ├─ dados.json, meta.json    <- agregados por rua/mês (gerar_dados_agregados.py)
-│  │  ├─ medianas.json            <- medianas de R$/m² por bairro (gerar_dados_agregados.py)
 │  │  ├─ indices.json             <- IPCA, CDI, TR e Selic (atualizar_indices.py)
-│  │  ├─ areas.json               <- área e R$/m² de cada venda, p/ faixas de metragem (gerar_areas.py)
+│  │  ├─ areas.json               <- área e R$/m² de cada venda: faixas de metragem e medianas (gerar_areas.py)
 │  │  └─ transacoes\              <- um JSON por bairro + index.json (gerar_transacoes_site.py)
 │  ├─ scripts\
 │  ├─ .vscode\settings.json       <- Commit no VS Code já envia ao GitHub
@@ -42,7 +41,7 @@ Coloque os `.xlsx` em `C:\Projetos\ITBI Git\planilhas_sefaz` e rode, no terminal
 ```bash
 pip install openpyxl                      # só na primeira vez
 python scripts/processar_itbi.py          # xlsx -> planilhas_sefaz\saida\itbi_limpo.csv + relatorio_qualidade.txt
-python scripts/gerar_dados_agregados.py   # -> public/dados.json, meta.json e medianas.json
+python scripts/gerar_dados_agregados.py   # -> public/dados.json e meta.json
 python scripts/gerar_transacoes_site.py   # -> public/transacoes/*.json e public/areas.json (faixas de metragem)
 python scripts/atualizar_indices.py       # IPCA, CDI, TR e meta Selic (Banco Central) -> public/indices.json
 ```
@@ -58,7 +57,7 @@ python -m http.server 8000                # abra http://localhost:8000 (ou http:
 
 ## Detalhes úteis
 - A primeira planilha da Fazenda começa em **2011-07**; o último mês publicado costuma atrasar.
-- Bairro e cidade usam a **mediana** do R$/m²; rua usa média ponderada (poucas vendas). Sem `medianas.json`, o site cai para médias.
+- Bairro e cidade usam a **mediana** do R$/m²; rua usa média ponderada (poucas vendas). As medianas vêm do `areas.json`; enquanto ele carrega (ou se faltar), o site mostra médias.
 - Se `indices.json` não existir, o site tenta ler o Banco Central direto do navegador; se falhar, os recursos de IPCA/CDI ficam desativados.
 - Ao mudar `app.js` ou `calc.js`, suba o `?v=` deles no `index.html` para furar o cache do navegador.
 - Calculadora e estimativas são educativas: não são recomendação nem avaliação profissional.

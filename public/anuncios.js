@@ -1,4 +1,4 @@
-// ImobRJ — aba "Anúncios": lê o que dá do LINK do anúncio (sem acessar o portal), pede o que falta,
+// ImobRJ — aba "Avaliar anúncio" (id anuncios): lê o que dá do LINK do anúncio (sem acessar o portal), pede o que falta,
 // compara com as vendas do ITBI (prédio, rua, faixa de área, bairro), preenche a calculadora e salva para comparar.
 // Usa do app.js: $, brl, num, strip, normRua, pretty, toast, areaSet, irParaAba, MESES.
 // Usa do transacoes.js: TX, esc, quantil, txCarregarIndice, txCarregarBairro. Do calc.js: CALC_REF, formatMoeda, parseMoeda, CALC_EDIT.
@@ -81,7 +81,7 @@ function anMontar() {
       <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1">
         ${campo('anOp', 'Anúncio de', `<select id="anOp" class="sel w-full">${opt('venda', 'Venda')}${opt('aluguel', 'Aluguel')}</select>`)}
         ${campo('anTipo', 'Tipo', `<select id="anTipo" class="sel w-full">${AN_TIPOS.map(t => opt(t[0], t[1])).join('')}</select>`)}
-        ${campo('anBairro', 'Bairro *', `<select id="anBairro" class="sel w-full"><option value="">Carregando…</option></select>`)}
+        ${campo('anBairro', 'Bairro *', `<select id="anBairro" data-w="100%" class="sel w-full"><option value="">Carregando…</option></select>`)}
         ${campo('anArea', 'Área *', `<div class="flex items-center gap-2"><input id="anArea" type="number" inputmode="numeric" min="10" step="1" class="sel w-full text-right"><span class="text-xs text-gray-500">m²</span></div>`)}
         ${campo('anPreco', '<span id="anPrecoRot">Preço pedido *</span>', din('anPreco'))}
         ${campo('anCond', 'Condomínio (por mês)', din('anCond', 'opcional'))}
@@ -105,10 +105,11 @@ function anMontar() {
     if (el.id === 'anLink') return;
     if (el.dataset.money) el.value = formatMoeda(parseMoeda(el.value)) === '0' ? '' : formatMoeda(parseMoeda(el.value));
     if (AN_CAMPOS.includes(el.id)) AN.lidos.delete(el.id);
-    if (el.id === 'anBairro') return anTrocarBairro();
     anAgendar();
   });
-  root.addEventListener('change', e => { if (['anOp', 'anTipo', 'anIptuPer'].includes(e.target.id)) { AN.lidos.delete(e.target.id); anAgendar(); } });
+  root.addEventListener('change', e => {
+    if (e.target.id === 'anBairro') { AN.lidos.delete('anBairro'); return anTrocarBairro(); }
+    if (['anOp', 'anTipo', 'anIptuPer'].includes(e.target.id)) { AN.lidos.delete(e.target.id); anAgendar(); } });
   $('anLer').onclick = () => anAplicarLink($('anLink').value);
   $('anLink').addEventListener('keydown', e => { if (e.key === 'Enter') anAplicarLink($('anLink').value); });
   $('anLink').addEventListener('paste', () => setTimeout(() => anAplicarLink($('anLink').value), 0));
@@ -122,6 +123,7 @@ function anMontar() {
     else if (acao === 'abrir') anAbrirSalvo(id);
     else if (acao === 'apagar') { anSet(anGet().filter(x => x.id !== id)); if (AN.editId === id) AN.editId = null; anRenderLista(); anAgendar(); }
   });
+  if (window.comboMelhorar) comboMelhorar($('anBairro'));
   AN.pronto = true;
 }
 
@@ -133,6 +135,11 @@ async function renderAnuncios() {
   if (sel.options.length <= 1) {
     sel.innerHTML = '<option value="">Escolha…</option>' + TX.idx.bairros.map(b => `<option value="${esc(b.arquivo)}">${esc(b.nome)}</option>`).join('');
     if (AN.arq) sel.value = AN.arq;
+  }
+  // local escolhido no site: preenche o bairro se o formulário ainda não tem um (ou se o local mudou em outra aba)
+  if (S.lvl !== 'cidade' && S.nb !== AN.nbSite) {
+    AN.nbSite = S.nb; const b = TX.idx.bairros.find(x => x.nb === S.nb);
+    if (b && b.arquivo !== sel.value && !AN.editId) { sel.value = b.arquivo; await anTrocarBairro(); }
   }
   anMarcar(); anRenderLista(); anAvaliar();
 }
@@ -167,6 +174,7 @@ async function anAplicarLink(txt) {
 
 async function anTrocarBairro() {
   const arq = $('anBairro').value; AN.arq = arq || null; AN.d = null; AN.dArq = null; $('anRuas').innerHTML = '';
+  const bs = arq && TX.idx?.bairros.find(x => x.arquivo === arq); if (bs) { localDeAba(bs.nb); AN.nbSite = S.nb; }   // vale para o site todo
   anAgendar();
   if (!arq) return;
   try { const d = await txCarregarBairro(arq); if ($('anBairro').value !== arq) return; AN.d = d; AN.dArq = arq;
@@ -179,9 +187,10 @@ function anMarcar() {
   const obrig = ['anBairro', 'anArea', 'anPreco'];
   for (const id of AN_CAMPOS) {
     const el = $(id), tag = $(id + 'Tag'); if (!el || !tag) continue;
+    const alvo = el.dataset.combo ? el.nextElementSibling?.querySelector('input') || el : el;   // seletor com busca: o anel vai no campo visível
     const vazio = !el.value || (el.dataset.money && !parseMoeda(el.value));
     const lido = AN.lidos.has(id), falta = obrig.includes(id) && vazio;
-    el.classList.toggle('ring-2', lido || falta); el.classList.toggle('ring-emerald-400', lido); el.classList.toggle('ring-amber-400', !lido && falta);
+    alvo.classList.toggle('ring-2', lido || falta); alvo.classList.toggle('ring-emerald-400', lido); alvo.classList.toggle('ring-amber-400', !lido && falta);
     tag.className = 'text-[11px] mt-0.5 min-h-[1rem] ' + (lido ? 'text-emerald-700' : 'text-amber-700');
     tag.textContent = lido ? 'lido do link' : falta ? 'falta preencher' : '';
   }
@@ -253,8 +262,8 @@ function anAvaliar() {
     const y = a.preco * 12 / valorRef * 100, refY = CALC_REF.yieldAluguel; res.yield = y; res.valorRef = valorRef;
     cor = y > refY * 1.15 ? 'text-red-600' : y < refY * 0.85 ? 'text-emerald-600' : 'text-gray-800';
     destaque = `${y.toFixed(1).replace('.', ',')}% <span class="text-base font-semibold text-gray-500">ao ano do valor do imóvel</span>`;
-    texto = `O imóvel vale cerca de <b>${brl(valorRef)}</b> pelas vendas do ITBI (${esc(ref.nome)}: ${brl(ref.med)}/m², ${num(ref.n)} venda${ref.n > 1 ? 's' : ''}). O aluguel pedido de ${brl(a.preco)}/mês equivale a <b>${y.toFixed(1).replace('.', ',')}% ao ano</b> desse valor; a média nacional é ${f2(refY)}% (FipeZAP).
-      ${y > refY * 1.15 ? 'Aluguel <b class="text-red-600">caro</b> para o preço da região: comprar tende a compensar mais.' : y < refY * 0.85 ? 'Aluguel <b class="text-emerald-600">barato</b> para o preço da região: alugar tende a compensar.' : 'Aluguel <b>na média</b> para o preço da região.'}`;
+    texto = `O imóvel vale cerca de <b>${brl(valorRef)}</b> pelas vendas do ITBI (${esc(ref.nome)}: ${brl(ref.med)}/m², ${num(ref.n)} venda${ref.n > 1 ? 's' : ''}). O aluguel pedido de ${brl(a.preco)}/mês equivale a <b>${y.toFixed(1).replace('.', ',')}% ao ano</b> desse valor; a referência é ${f2(refY)}% ao ano (média <b>nacional</b> do FipeZAP, ${CALC_REF.data}; não é um número do Rio nem do bairro).
+      ${y > refY * 1.15 ? 'O aluguel pedido está <b class="text-red-600">acima</b> dessa referência para o preço do imóvel: comprar tende a compensar mais.' : y < refY * 0.85 ? 'O aluguel pedido está <b class="text-emerald-600">abaixo</b> dessa referência para o preço do imóvel: alugar tende a compensar.' : 'O aluguel pedido está <b>perto</b> dessa referência.'} Confira com outros anúncios de aluguel parecidos no bairro.`;
   }
   AN.ult = res;
   const linhas = cam.C.map(c => `<tr class="border-b last:border-0 ${c === ref ? 'bg-[#f6f3ef] font-semibold' : ''}"><td class="py-2 pr-3">${esc(c.nome)}${c === ref ? ' <span class="text-[11px] text-brand-600">referência</span>' : ''}</td>

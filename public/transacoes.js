@@ -1,4 +1,4 @@
-// Aba "Transações": consulta por unidade (rua, número, complemento) a partir de transacoes/index.json e transacoes/<bairro>.json.
+// Aba "Vendas por imóvel" (id tx): consulta por unidade (rua, número, complemento) a partir de transacoes/index.json e transacoes/<bairro>.json.
 // Usa helpers do app.js ($, brl, num, strip, normRua, MESES, S, BAIRROS). Os arquivos são gerados por scripts/gerar_transacoes_site.py.
 const TX = { idx: null, erro: null, cache: new Map(), cur: null, f: {}, pagina: 0, escopo: null, pronto: false };
 const TX_POR_PAGINA = 50;
@@ -45,13 +45,22 @@ function txMontarControles() {
   $('txBairro').innerHTML = '<option value="">Escolha um bairro…</option>' + i.bairros.map(b => `<option value="${esc(b.arquivo)}">${esc(b.nome)} (${num(b.n)})</option>`).join('');
   $('txDe').innerHTML = $('txAte').innerHTML = anos.map(a => `<option>${a}</option>`).join('');
   $('txDe').value = anos[0]; $('txAte').value = anos.at(-1);
-  $('txBairro').onchange = () => txTrocarBairro(null);
+  $('txBairro').onchange = () => {   // o bairro escolhido aqui passa a valer para o site todo
+    const b = TX.idx.bairros.find(x => x.arquivo === $('txBairro').value);
+    if (b) { localDeAba(b.nb); TX.escopo = S.lvl + '|' + S.nb + '|' + S.nl; }
+    txTrocarBairro(null);
+  };
   ['txRua', 'txTip', 'txDe', 'txAte', 'txVmin', 'txVmax', 'txAmin', 'txAmax', 'txBusca', 'txPredio', 'txOrdem'].forEach(id =>
     $(id).addEventListener(id === 'txBusca' || /min|max/.test(id) ? 'input' : 'change', () => { TX.pagina = 0; txAtualizar(); }));
-  $('txArea').addEventListener('input', () => {        // metragem ± 5 m² → preenche área mín. e máx.
-    const c = +$('txArea').value.replace(',', '.'); if (!(c >= 10)) return;
+  $('txArea').addEventListener('input', () => {        // metragem ± 5 m² → preenche área mín. e máx. (apagar a metragem limpa os dois)
+    const c = +$('txArea').value.replace(',', '.');
+    if ($('txArea').value.trim() === '') { $('txAmin').value = $('txAmax').value = ''; TX.pagina = 0; return txAtualizar(); }
+    if (!(c >= 10)) return;
     const [lo, hi] = faixaDe(c); $('txAmin').value = lo; $('txAmax').value = hi; TX.pagina = 0; txAtualizar();
   });
+  ['txAmin', 'txAmax'].forEach(id => $(id).addEventListener('input', () => { $('txArea').value = ''; }));   // mexeu à mão: a metragem deixa de valer
+  $('txDe').addEventListener('change', () => { if (+$('txAte').value < +$('txDe').value) { $('txAte').value = $('txDe').value; txAtualizar(); } });
+  $('txAte').addEventListener('change', () => { if (+$('txDe').value > +$('txAte').value) { $('txDe').value = $('txAte').value; txAtualizar(); } });
   $('txPrev').onclick = () => { TX.pagina = Math.max(0, TX.pagina - 1); txAtualizar(true); };
   $('txNext').onclick = () => { TX.pagina++; txAtualizar(true); };
   $('txConteudo').addEventListener('click', e => {      // clicar num prédio filtra por ele
@@ -69,7 +78,7 @@ async function txTrocarBairro(nlRua) {
   try { TX.cur = await txCarregarBairro(arq); }
   catch (e) { TX.cur = null; $('txConteudo').innerHTML = '<div class="card text-sm text-red-600">Não foi possível carregar este bairro. Tente novamente.</div>'; return; }
   const d = TX.cur;
-  $('txRua').innerHTML = '<option value="">Todas as ruas</option>' + d.ruas.map((r, i) => `<option value="${i}">${esc(r)}</option>`).join('');
+  $('txRua').innerHTML = '<option value="">Todas as ruas</option>' + d.ruas.map((r, i) => [i, pretty(r)]).sort((a, b) => a[1].localeCompare(b[1])).map(([i, r]) => `<option value="${i}">${esc(r)}</option>`).join('');
   $('txTip').innerHTML = '<option value="">Todos os tipos</option>' + d.tipologias.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join('');
   if (nlRua) { const i = d.ruas.findIndex(r => normRua(r) === nlRua); if (i >= 0) $('txRua').value = i; }
   txAtualizar();
@@ -104,13 +113,13 @@ function txAtualizar(soPagina) {
     linhas = [...g.values()].map(a => { const o = a.filter(l => !l.fl); return { rua: a[0].rua, numero: a[0].numero, n: a.length, de: minmax(a, l => l.t)[0], ate: minmax(a, l => l.t)[1], m2: o.length ? quantil(o.map(l => l.valor / l.area), .5) : null, valor: o.length ? quantil(o.map(l => l.valor), .5) : null }; });
     linhas.sort((a, b) => b.n - a.n || d.ruas[a.rua].localeCompare(d.ruas[b.rua]));
     cab = ['Logradouro', 'Nº', 'Vendas', 'Período', 'Mediana R$/m²', 'Mediana valor'];
-    corpo = l => `<tr class="border-b last:border-0 hover:bg-gray-50 cursor-pointer" data-rua="${l.rua}" data-num="${esc(l.numero)}"><td class="py-2 pr-3">${esc(d.ruas[l.rua])}</td><td>${esc(l.numero)}</td><td>${l.n}</td><td>${txMes(l.de)}–${txMes(l.ate)}</td><td>${brl(l.m2)}</td><td>${brl(l.valor)}</td></tr>`;
+    corpo = l => `<tr class="border-b last:border-0 hover:bg-gray-50 cursor-pointer" data-rua="${l.rua}" data-num="${esc(l.numero)}"><td class="py-2 pr-3">${esc(pretty(d.ruas[l.rua]))}</td><td>${esc(l.numero)}</td><td>${l.n}</td><td>${txMes(l.de)}–${txMes(l.ate)}</td><td>${brl(l.m2)}</td><td>${brl(l.valor)}</td></tr>`;
   } else {
     linhas = rows;
     const cmp = { data: (a, b) => b.t - a.t, valor: (a, b) => b.valor - a.valor, m2: (a, b) => b.valor / b.area - a.valor / a.area }[ordem];
     linhas.sort((a, b) => cmp(a, b) || d.ruas[a.rua].localeCompare(d.ruas[b.rua]) || a.numero.localeCompare(b.numero, undefined, { numeric: true }));
     cab = ['Data', 'Logradouro', 'Nº', 'Complemento', 'Tipo', 'Área (m²)', 'Valor declarado', 'R$/m²', 'Obs.'];
-    corpo = l => `<tr class="border-b last:border-0"><td class="py-2 pr-3 whitespace-nowrap">${MESES[l.mes - 1]}/${l.ano}</td><td class="pr-3">${esc(d.ruas[l.rua])}</td><td class="pr-3">${l.numero === '0' || l.numero === '' ? 's/n' : esc(l.numero)}</td>
+    corpo = l => `<tr class="border-b last:border-0"><td class="py-2 pr-3 whitespace-nowrap">${MESES[l.mes - 1]}/${l.ano}</td><td class="pr-3">${esc(pretty(d.ruas[l.rua]))}</td><td class="pr-3">${l.numero === '0' || l.numero === '' ? 's/n' : esc(l.numero)}</td>
       <td class="pr-3 text-xs">${esc(l.compl) || '—'}</td><td class="pr-3">${esc(d.tipologias[l.tip])}${l.com ? ' (comercial)' : ''}</td><td>${num(l.area)}</td><td>${brl(l.valor)}</td>
       <td>${l.fl & 1 ? '—' : brl(l.valor / l.area)}</td><td class="text-xs text-amber-700">${l.fl & 1 ? 'venda parcial' : l.fl & 2 ? 'R$/m² atípico' : ''}</td></tr>`;
   }
