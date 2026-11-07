@@ -28,6 +28,7 @@ tailwind.config = { theme: { extend: {
   input, select { outline:none } input:focus, select:focus { box-shadow:0 0 0 3px rgba(239,75,63,.3) }
   .sug.act { background:#fff1ef }
   /* início do conteúdo fica logo abaixo do menu fixo; altura mínima evita que abas curtas "puxem" a página de volta ao banner */
+  #hero.compacto .hero-big { display:none !important } #hero.compacto { padding-top:1rem; padding-bottom:1rem } #hero.compacto #heroBusca { margin-top:0 }
   #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
   .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
@@ -40,13 +41,13 @@ tailwind.config = { theme: { extend: {
     <a href="#overview" id="logo" class="shrink-0 flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
     <nav id="tabsNav" class="tabs-nav flex gap-1 overflow-x-auto ml-2 min-w-0">
       <button data-tab="overview" class="tab-btn active">Visão geral</button>
-      <button data-tab="compare" class="tab-btn">Comparador</button>
+      <button data-tab="compare" class="tab-btn">Comparar bairros</button>
       <button data-tab="trend" class="tab-btn">Tendência</button>
-      <button data-tab="tx" class="tab-btn">Transações</button>
-      <button data-tab="anuncios" class="tab-btn">Anúncios</button>
+      <button data-tab="tx" class="tab-btn">Vendas por imóvel</button>
+      <button data-tab="anuncios" class="tab-btn">Avaliar anúncio</button>
       <button data-tab="calc" class="tab-btn">Comprar ou alugar</button>
       <button data-tab="history" class="tab-btn">Histórico</button>
-      <button data-tab="method" class="tab-btn">Dados e metodologia</button>
+      <button data-tab="method" class="tab-btn">Sobre os dados</button>
     </nav>
     <button id="btnCidade" class="ml-auto text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap hidden sm:block"><i class="fa-solid fa-city mr-1"></i>Cidade toda</button>
   </div>
@@ -54,12 +55,12 @@ tailwind.config = { theme: { extend: {
 
 <main class="max-w-7xl mx-auto px-4 pb-16">
   <!-- HERO / BUSCA -->
-  <section class="relative z-30 mt-4 rounded-3xl p-5 sm:p-7 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
+  <section id="hero" class="relative z-30 mt-4 rounded-3xl p-5 sm:p-7 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
     <p class="text-xs sm:text-sm font-semibold opacity-90 mb-1"><i class="fa-solid fa-chart-line mr-1"></i>Dados oficiais de ITBI · Prefeitura do Rio<span id="stamp" class="font-normal opacity-80"></span></p>
-    <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
-    <p class="hidden sm:block mt-2 text-sm text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
+    <h1 class="hero-big text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
+    <p class="hero-big hidden sm:block mt-2 text-sm text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
 
-    <div class="relative z-50 mt-4 max-w-3xl">
+    <div id="heroBusca" class="relative z-50 mt-4 max-w-3xl">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
         <input id="search" autocomplete="off" placeholder="Digite um CEP, rua ou bairro…"
@@ -69,7 +70,7 @@ tailwind.config = { theme: { extend: {
       <div id="suggest" class="hidden absolute left-0 right-0 mt-2 bg-white text-ink border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto" style="z-index:9999"></div>
     </div>
 
-    <div class="mt-3 flex flex-wrap gap-2 items-center text-sm">
+    <div class="hero-big mt-3 flex flex-wrap gap-2 items-center text-sm">
       <span class="opacity-80 mr-1">Populares:</span><span id="popular" class="flex flex-wrap gap-2"></span>
     </div>
     <div class="mt-3 flex flex-wrap gap-3 items-center text-sm">
@@ -84,7 +85,7 @@ tailwind.config = { theme: { extend: {
   <section id="conteudo" class="relative z-0 mt-6">
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h2 id="scopeTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight">Cidade do Rio de Janeiro</h2>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight"><span id="scopeTitle">Cidade do Rio de Janeiro</span><button type="button" id="btnLimparLocal" class="hidden ml-2 align-middle text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap" aria-label="Voltar para a cidade toda"><i class="fa-solid fa-xmark mr-1"></i>cidade toda</button></h2>
         <div id="scopeSub" class="text-sm text-gray-500 mt-1"></div>
       </div>
       <div class="flex flex-wrap gap-2 items-center">
@@ -94,7 +95,7 @@ tailwind.config = { theme: { extend: {
       </div>
     </div>
     <div id="filtersBar" class="mt-4 flex flex-wrap gap-3 text-sm">
-      <label class="text-xs text-gray-500">Tipologia<br><select id="fTip" class="sel text-ink"><option value="">Todas</option></select></label>
+      <label class="text-xs text-gray-500">Tipo de imóvel<br><select id="fTip" class="sel text-ink"><option value="">Todos</option></select></label>
       <label class="text-xs text-gray-500">De<br><select id="fDe" class="sel text-ink"></select></label>
       <label class="text-xs text-gray-500">Até<br><select id="fAte" class="sel text-ink"></select></label>
       <label class="text-xs text-gray-500">Agrupar<br><select id="fGran" class="sel text-ink"><option value="1">Mensal</option><option value="3">Trimestral</option></select></label>
@@ -138,7 +139,7 @@ tailwind.config = { theme: { extend: {
           <p id="idxNote" class="w-full text-xs text-gray-500"></p>
         </div>
         <div id="cmpBanner"></div>
-        <div class="card"><h3 class="font-bold mb-3">Comparador de mercado</h3><div class="chart-box" style="height:380px"><canvas id="cCmp"></canvas></div></div>
+        <div class="card"><h3 class="font-bold mb-3">Preço do m²: local escolhido × cidade × outro bairro</h3><div class="chart-box" style="height:380px"><canvas id="cCmp"></canvas></div></div>
         <div class="card overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-2">Mercado</th><th>R$/m² mediano (12m)</th><th>Valor médio</th><th>Transações (12m)</th><th>Var. 12m</th><th>vs. Cidade</th></tr></thead><tbody id="cmpTable"></tbody></table></div>
         <div id="idxCards" class="space-y-6"></div>
       </section>
@@ -176,14 +177,14 @@ tailwind.config = { theme: { extend: {
       <!-- TRANSAÇÕES POR IMÓVEL -->
       <section id="tab-tx" class="tab hidden space-y-6">
         <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Transações por imóvel</h2>
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Vendas por imóvel</h2>
           <p class="text-gray-600 mt-2 max-w-3xl">Vendas registradas no ITBI da Prefeitura, uma linha por transação, com rua, número e complemento (apartamento). O valor é o <b>declarado na guia</b>; não é preço anunciado nem avaliação profissional. A fonte informa só mês e ano.</p>
         </div>
         <div id="txControles" class="card space-y-3 text-sm">
           <div class="flex flex-wrap gap-3">
             <label class="text-xs text-gray-500">Bairro<br><select id="txBairro" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
             <label class="text-xs text-gray-500">Rua<br><select id="txRua" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white max-w-[16rem]"><option value="">Todas as ruas</option></select></label>
-            <label class="text-xs text-gray-500">Tipo<br><select id="txTip" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="">Todos os tipos</option></select></label>
+            <label class="text-xs text-gray-500">Tipo de imóvel<br><select id="txTip" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="">Todos</option></select></label>
             <label class="text-xs text-gray-500">De<br><select id="txDe" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
             <label class="text-xs text-gray-500">Até<br><select id="txAte" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
           </div>
@@ -205,13 +206,13 @@ tailwind.config = { theme: { extend: {
           <span id="txPageInfo" class="text-gray-500"></span>
           <button id="txNext" class="border rounded-full px-4 py-1.5 bg-white disabled:opacity-40">Próxima</button>
         </div>
-        <p class="text-xs text-gray-500">Estatísticas (mediana e percentis) usam só vendas integrais com R$/m² plausível; vendas parciais e valores atípicos aparecem na lista, marcados. A fonte não distingue o tipo de transação (compra e venda, cessão etc.). Detalhes em “Dados e metodologia”.</p>
+        <p class="text-xs text-gray-500">Estatísticas (mediana e percentis) usam só vendas integrais com R$/m² plausível; vendas parciais e valores atípicos aparecem na lista, marcados. A fonte não distingue o tipo de transação (compra e venda, cessão etc.). Detalhes em “Sobre os dados”.</p>
       </section>
 
       <!-- DADOS E METODOLOGIA -->
       <section id="tab-method" class="tab hidden space-y-6">
         <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Dados e metodologia</h2>
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Sobre os dados</h2>
           <p class="text-gray-600 mt-2 max-w-3xl">De onde vêm os números, como são tratados e o que eles <b>não</b> dizem. A qualidade deste painel depende da transparência sobre isso.</p>
         </div>
 
@@ -294,8 +295,8 @@ tailwind.config = { theme: { extend: {
 
         <div class="card"><h3 class="font-bold mb-3">Limitações importantes</h3>
           <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
-            <li><b>Aba Transações – o que ela é e o que não é.</b> Mostra o valor <b>declarado na guia de ITBI</b>, com rua, número e complemento (apartamento) como publicados pela Prefeitura. A fonte não traz o dia da venda nem o tipo de transação (compra e venda, cessão etc.), então nem toda linha é necessariamente uma compra e venda comum. O complemento é texto livre, sem padrão. Terrenos, linhas com área ou valor inválidos e duplicatas ficam de fora; vendas parciais e R$/m² fora de R$ 500–200.000 aparecem marcadas e não entram nas estatísticas. A área vem arredondada em m² inteiros.</li>
-            <li><b>Mediana do bairro, média da rua.</b> Bairro e cidade usam a mediana real das vendas. Uma rua isolada usa a média, que pode ser distorcida por um imóvel atípico. A aba <b>Transações</b> mostra também os percentis 25 e 75.</li>
+            <li><b>Aba Vendas por imóvel – o que ela é e o que não é.</b> Mostra o valor <b>declarado na guia de ITBI</b>, com rua, número e complemento (apartamento) como publicados pela Prefeitura. A fonte não traz o dia da venda nem o tipo de transação (compra e venda, cessão etc.), então nem toda linha é necessariamente uma compra e venda comum. O complemento é texto livre, sem padrão. Terrenos, linhas com área ou valor inválidos e duplicatas ficam de fora; vendas parciais e R$/m² fora de R$ 500–200.000 aparecem marcadas e não entram nas estatísticas. A área vem arredondada em m² inteiros.</li>
+            <li><b>Mediana do bairro, média da rua.</b> Bairro e cidade usam a mediana real das vendas. Uma rua isolada usa a média, que pode ser distorcida por um imóvel atípico. A aba <b>Vendas por imóvel</b> mostra também os percentis 25 e 75.</li>
             <li><b>Não é um índice de preços puro.</b> O R$/m² de cada mês mistura imóveis diferentes (mudança de padrão, tamanho, localização). Índices profissionais, como o FipeZap, usam outras metodologias.</li>
             <li><b>Preço de ITBI não é necessariamente o preço efetivamente pago, nem o valor atual de mercado.</b> Há defasagem de publicação: a tabela omite o mês mais recente.</li>
             <li><b>O volume varia muito entre regiões.</b> Ruas e bairros com poucas transações geram séries instáveis; veja sempre o número de transações.</li>

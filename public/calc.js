@@ -166,7 +166,7 @@ function calcMontar() {
     const sis = e.target.closest('.cSis'); if (sis) { root.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x === sis)); calcRodar(); return; }
     const perfil = e.target.closest('.cPerfil'); if (perfil) { const ipca = cv('cIpca'), nom = +perfil.dataset.nom, real = ((1 + nom / 100) / (1 + ipca / 100) - 1) * 100; $('cRendReal').value = real.toFixed(2); CALC_EDIT.add('cRendReal'); root.querySelectorAll('.cPerfil').forEach(x => x.classList.toggle('on', x === perfil)); $('cPerfilInfo').textContent = `${perfil.textContent.trim()}: ${f2(nom)}% nominal equivale a ${f2(real)}% real com IPCA de ${f2(ipca)}%.`; calcRodar(); }
   });
-  $('cBairro').onchange = () => calcUsarMediana();
+  $('cBairro').onchange = () => { localDeAba($('cBairro').value); renderCalc.nb = $('cBairro').value; calcUsarMediana(); };   // vale para o site todo
   $('cAmortFonte').onchange = () => { calcAmortFonteInfo(); calcRodar(); };
   $('cenSalvar').onclick = cenSalvar;
   $('cenNome').onkeydown = e => { if (e.key === 'Enter') cenSalvar(); };
@@ -622,11 +622,13 @@ function calcRodar() {
 
 function renderCalc() {
   if (!CALC_OK) {
-    calcMontar();
+    calcMontar(); if (window.comboMelhorar) comboMelhorar($('cBairro'));
     if (S.lvl !== 'cidade' && S.nb) $('cBairro').value = S.nb;   // puxa o bairro selecionado no site
+    renderCalc.nb = S.nb;
     calcSugerir(); calcUsarMediana(true); cenRender(); if (AREAS) renderCalc.fx = true;
   } else {
-    if (S.lvl !== 'cidade' && S.nb && !$('cBairro').value) $('cBairro').value = S.nb;
+    if (S.lvl !== 'cidade' && S.nb && S.nb !== renderCalc.nb) { $('cBairro').value = S.nb; calcUsarMediana(true); }   // local mudou em outra aba
+    renderCalc.nb = S.nb;
     if (+$('cArea').value !== areaGet()) { $('cArea').value = areaGet(); calcUsarMediana(true); }   // área mudou na aba Tendência
     else if (AREAS && !renderCalc.fx && !CALC_EDIT.has('cValor')) calcUsarMediana(true);              // faixas de metragem chegaram depois
     if (AREAS) renderCalc.fx = true;

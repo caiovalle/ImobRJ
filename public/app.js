@@ -29,7 +29,7 @@ const COLORS = ['#ef4b3f', '#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#94a3b8'
 // ---------- Estado ----------
 let ROWS = [], RUAS = [], BAIRROS = [];
 let S = { lvl:'cidade', nb:null, nl:null, label:'Cidade do Rio de Janeiro' };   // escopo (local) atual
-let F = { tipo:'', tip:'', de:2018, ate:2026, gran:1 };                         // filtros
+let F = { tipo:'Residencial', tip:'', de:2018, ate:2026, gran:1 };              // filtros (abre em Residencial: quem chega quer saber de moradia)
 let TAB = 'overview', B = [];                                                   // B = linhas após filtros
 const charts = {};
 
@@ -77,7 +77,7 @@ function start(raw) {
   $('fDe').innerHTML = $('fAte').innerHTML = anos.map(a => `<option>${a}</option>`).join('');
   $('fDe').value = F.de; $('fAte').value = F.ate;
   const tips = [...new Set(ROWS.map(r => r.tipologia))].sort();
-  $('fTip').innerHTML = '<option value="">Todas</option>' + tips.map(t => `<option>${t}</option>`).join('');
+  $('fTip').innerHTML = '<option value="">Todos</option>' + tips.map(t => `<option>${t}</option>`).join('');
   $('cmpExtra').innerHTML = '<option value="">— nenhum —</option>' + BAIRROS.map(b => `<option value="${b.nb}">${b.nome}</option>`).join('');
 
   fetch('meta.json', { cache: 'no-cache' }).then(r => r.json()).then(m => {   // carimbo de atualização (opcional)
@@ -90,7 +90,7 @@ function start(raw) {
   const pop = [...BAIRROS].sort((a, b) => b.n - a.n).slice(0, 6);
   $('popular').innerHTML = pop.map(b => `<button class="pop bg-white/20 hover:bg-white/30 rounded-full px-3 py-1 font-semibold" data-nb="${b.nb}">${b.nome}</button>`).join('');
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-  bindEvents(); renderChips(); TAB = abaDoEndereco(); marcarAba(); render();
+  bindEvents(); paintPills(); renderChips(); TAB = abaDoEndereco(); lerLocalDoEndereco(); syncSelects(); marcarAba(); render();
   loadIndices().finally(() => { renderMethodAuto(); if (TAB !== 'history') render(); });
   loadMedianas().then(() => { if (MED && TAB !== 'history') render(); });
   loadAreas().then(() => { if (AREAS && TAB !== 'history') render(); });
@@ -290,6 +290,9 @@ function render() {
   const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
   const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';
+  // banner grande só na Visão geral; Comparar bairros e Tendência ficam com a busca compacta; nas demais abas ele some
+  $('hero').classList.toggle('hidden', semBarra || TAB === 'history'); $('hero').classList.toggle('compacto', TAB !== 'overview');
+  $('btnLimparLocal').classList.toggle('hidden', S.lvl === 'cidade');
   $('scopeHead').classList.toggle('hidden', semBarra); $('filtersBar').classList.toggle('hidden', semBarra);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + TAB || (!has && !solo)));
   $('scopeTitle').textContent = S.label;
@@ -426,7 +429,7 @@ function renderCompare(sc) {
   let mode = $('cmpMode').value; if (mode === 'real' && !IDX) mode = 'abs';
   if (useIpca || useCdi) mode = 'idx';                       // IPCA/CDI só fazem sentido em base 100
   $('idxNote').textContent = IDX
-    ? `Índices oficiais (Banco Central/SGS): IPCA (IBGE) até ${ymLabel(IDX.fim.ipca)}; CDI (B3) até ${ymLabel(IDX.fim.cdi)}; disponíveis desde ${ymLabel(IDX.ini)}. Veja detalhes em “Dados e metodologia”.`
+    ? `Índices oficiais (Banco Central/SGS): IPCA (IBGE) até ${ymLabel(IDX.fim.ipca)}; CDI (B3) até ${ymLabel(IDX.fim.cdi)}; disponíveis desde ${ymLabel(IDX.ini)}. Veja detalhes em “Sobre os dados”.`
     : 'Índices IPCA/CDI indisponíveis. Rode scripts/atualizar_indices.py para gerar public/indices.json (instruções no README).';
   $('cmpIpca').disabled = $('cmpCdi').disabled = !IDX;
 
@@ -651,7 +654,7 @@ function selecionar(sc, salvar = true) {
   S = { ...sc }; $('search').value = ''; $('suggest').classList.add('hidden');
   F.gran = sc.lvl === 'rua' ? 3 : 1; $('fGran').value = F.gran;   // ruas têm poucos pontos → trimestral
   if (salvar) addHistory();
-  syncSelects(); render(); if (sc.lvl === 'rua' && !sc.cep) carregarCEPs(sc);
+  syncSelects(); gravarEndereco(); render(); if (sc.lvl === 'rua' && !sc.cep) carregarCEPs(sc);
 }
 function toast(msg) {
   const t = document.createElement('div'); t.textContent = msg;
@@ -708,7 +711,8 @@ function bindEvents() {
   $('suggest').addEventListener('mousedown', e => e.preventDefault());   // mantém o foco no input
   $('suggest').addEventListener('mousedown', e => { const b = e.target.closest('.sug'); if (b) selecionar(JSON.parse(b.dataset.sc)); });
   document.addEventListener('click', e => { if (!e.target.closest('#search, #suggest')) $('suggest').classList.add('hidden'); });
-  $('btnCidade').onclick = () => { S = { lvl: 'cidade', label: 'Cidade do Rio de Janeiro' }; F.gran = 1; $('fGran').value = 1; syncSelects(); render(); };
+  $('btnCidade').onclick = () => { S = { lvl: 'cidade', label: 'Cidade do Rio de Janeiro' }; F.gran = 1; $('fGran').value = 1; syncSelects(); gravarEndereco(); render(); };
+  $('btnLimparLocal').onclick = () => $('btnCidade').click();
 
   const bind = (id, fn) => $(id).addEventListener('change', () => { fn($(id).value); render(); });
   bind('fTip', v => F.tip = v);
@@ -733,7 +737,7 @@ function bindEvents() {
 
   document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => irParaAba(b.dataset.tab));
   $('logo').onclick = e => { e.preventDefault(); irParaAba('overview', true, false); window.scrollTo({ top: 0, behavior: 'smooth' }); };   // logo = início, com o banner
-  window.addEventListener('popstate', () => irParaAba(abaDoEndereco(), false));   // botão "voltar" troca de aba
+  window.addEventListener('popstate', () => { if (lerLocalDoEndereco()) syncSelects(); irParaAba(abaDoEndereco(), false); });   // botão "voltar" troca de aba (e de local)
   document.addEventListener('click', e => {
     const c = e.target.closest('.chip'), d = e.target.closest('.del');
     if (c) { const h = getHist()[+c.dataset.h]; if (h) { if (TAB === 'history') { TAB = 'overview'; marcarAba(); history.replaceState(null, '', '#' + TAB); } selecionar(h.sc, false); irParaConteudo(); } }
@@ -765,7 +769,26 @@ function syncFilters() { paintPills(); $('fTip').value = F.tip; $('fDe').value =
 
 // ---------- Abas: endereço próprio (#aba) e rolagem até o início do conteúdo ----------
 const ABAS = ['overview', 'compare', 'trend', 'tx', 'anuncios', 'calc', 'history', 'method'];
-const abaDoEndereco = () => { const a = location.hash.slice(1); return ABAS.includes(a) ? a : 'overview'; };
+// endereço: #aba ou #aba/bairro ou #aba/bairro/rua (ex.: #trend/tijuca/rua-conde-bonfim), para compartilhar o link de um local
+const abaDoEndereco = () => { const a = location.hash.slice(1).split('/')[0]; return ABAS.includes(a) ? a : 'overview'; };
+const slugLocal = s => s.replace(/ /g, '-');
+const enderecoAtual = () => '#' + TAB + (S.lvl === 'cidade' ? '' : '/' + slugLocal(S.nb) + (S.lvl === 'rua' ? '/' + slugLocal(S.nl) : ''));
+function gravarEndereco() { if (location.hash !== enderecoAtual()) history.replaceState(null, '', enderecoAtual()); }
+function lerLocalDoEndereco() {   // aplica o local do endereço; true se mudou
+  const [, b, r] = decodeURIComponent(location.hash.slice(1)).split('/'), atual = S.lvl === 'cidade' ? '' : slugLocal(S.nb) + (S.lvl === 'rua' ? '/' + slugLocal(S.nl) : '');
+  if ((b || '') + (r ? '/' + r : '') === atual) return false;
+  const bb = b && BAIRROS.find(x => slugLocal(x.nb) === b), rr = bb && r && RUAS.find(x => x.nb === bb.nb && slugLocal(x.nl) === r);
+  S = rr ? { lvl: 'rua', nb: rr.nb, nl: rr.nl, label: `${rr.nome} · ${rr.bairro}` } : bb ? { lvl: 'bairro', nb: bb.nb, label: 'Bairro ' + bb.nome } : { lvl: 'cidade', label: 'Cidade do Rio de Janeiro' };
+  F.gran = S.lvl === 'rua' ? 3 : 1; $('fGran').value = F.gran;
+  return true;
+}
+// as abas com seletor de bairro próprio (Vendas por imóvel, Avaliar anúncio, Comprar ou alugar) avisam aqui quando a pessoa troca o bairro nelas
+function localDeAba(nb) {
+  if (!nb || (S.lvl !== 'cidade' && S.nb === nb)) return;
+  const b = BAIRROS.find(x => x.nb === nb); if (!b) return;
+  S = { lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }; F.gran = 1; $('fGran').value = 1;
+  addHistory(); syncSelects(); gravarEndereco();
+}
 function marcarAba() {
   document.querySelectorAll('.tab-btn').forEach(x => {
     const on = x.dataset.tab === TAB; x.classList.toggle('active', on);
@@ -782,7 +805,7 @@ function irParaConteudo() {
 function irParaAba(aba, registrar = true, rolar = true) {
   if (!ABAS.includes(aba)) aba = 'overview';
   const mudou = aba !== TAB; TAB = aba; marcarAba();
-  if (registrar && mudou) history.pushState(null, '', '#' + aba);   // pushState não faz a página pular (diferente de mudar location.hash)
+  if (registrar && mudou) history.pushState(null, '', enderecoAtual()); else gravarEndereco();   // pushState não faz a página pular (diferente de mudar location.hash)
   render(); if (rolar) irParaConteudo();
 }
 init();

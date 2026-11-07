@@ -1,4 +1,4 @@
-// Aba "Transações": consulta por unidade (rua, número, complemento) a partir de transacoes/index.json e transacoes/<bairro>.json.
+// Aba "Vendas por imóvel" (id tx): consulta por unidade (rua, número, complemento) a partir de transacoes/index.json e transacoes/<bairro>.json.
 // Usa helpers do app.js ($, brl, num, strip, normRua, MESES, S, BAIRROS). Os arquivos são gerados por scripts/gerar_transacoes_site.py.
 const TX = { idx: null, erro: null, cache: new Map(), cur: null, f: {}, pagina: 0, escopo: null, pronto: false };
 const TX_POR_PAGINA = 50;
@@ -45,7 +45,11 @@ function txMontarControles() {
   $('txBairro').innerHTML = '<option value="">Escolha um bairro…</option>' + i.bairros.map(b => `<option value="${esc(b.arquivo)}">${esc(b.nome)} (${num(b.n)})</option>`).join('');
   $('txDe').innerHTML = $('txAte').innerHTML = anos.map(a => `<option>${a}</option>`).join('');
   $('txDe').value = anos[0]; $('txAte').value = anos.at(-1);
-  $('txBairro').onchange = () => txTrocarBairro(null);
+  $('txBairro').onchange = () => {   // o bairro escolhido aqui passa a valer para o site todo
+    const b = TX.idx.bairros.find(x => x.arquivo === $('txBairro').value);
+    if (b) { localDeAba(b.nb); TX.escopo = S.lvl + '|' + S.nb + '|' + S.nl; }
+    txTrocarBairro(null);
+  };
   ['txRua', 'txTip', 'txDe', 'txAte', 'txVmin', 'txVmax', 'txAmin', 'txAmax', 'txBusca', 'txPredio', 'txOrdem'].forEach(id =>
     $(id).addEventListener(id === 'txBusca' || /min|max/.test(id) ? 'input' : 'change', () => { TX.pagina = 0; txAtualizar(); }));
   $('txArea').addEventListener('input', () => {        // metragem ± 5 m² → preenche área mín. e máx. (apagar a metragem limpa os dois)
