@@ -1,7 +1,7 @@
 // Sub-aba "Mapa" (id mapa): bairros do Rio pintados pela mediana do R$/m² dos últimos 12 meses.
 // Usa helpers e estado do app.js ($, brl, num, pct, MED, MB, F, S, BAIRROS, medOf, ymLabel, selecionar, irParaAba).
 // Limites dos bairros: public/bairros.geojson (camada "Limite de Bairros" do IPP/Data.Rio, simplificada; ver README).
-// A biblioteca Leaflet e o bairros.geojson só são baixados quando alguém abre o mapa.
+// Fundo do mapa: OpenStreetMap. A biblioteca Leaflet e o bairros.geojson só são baixados quando alguém abre o mapa.
 const MAPA = { map: null, camada: null, geo: null, st: '', dados: new Map(), cortes: [] };
 const MAPA_MIN = 10;   // mínimo de vendas em 12 meses para pintar o bairro (com menos, a mediana oscila demais)
 // do mais barato (areia) ao mais caro (terracota escuro), na paleta do site
@@ -46,7 +46,7 @@ const mapaInfo = nb => { const m = MAPA.dados.get(nb); return m && m.n >= MAPA_M
 
 function mapaEstilo(f) {
   const nb = f.properties.nb, m = mapaInfo(nb), sel = S.lvl !== 'cidade' && S.nb === nb;
-  return m ? { fillColor: MAPA_CORES[mapaClasse(m.m2)], fillOpacity: .85, color: sel ? '#1f4d3a' : '#fffbf4', weight: sel ? 3.5 : 1, dashArray: null }
+  return m ? { fillColor: MAPA_CORES[mapaClasse(m.m2)], fillOpacity: .8, color: sel ? '#1f4d3a' : '#fffbf4', weight: sel ? 3.5 : 1, dashArray: null }
     : { fillColor: '#cdbba2', fillOpacity: .25, color: sel ? '#1f4d3a' : '#a8977f', weight: sel ? 3.5 : .8, dashArray: sel ? null : '3 3' };
 }
 function mapaTexto(f) {
@@ -63,10 +63,9 @@ function mapaAbrirBairro(nb) {
 function mapaCriar() {
   const L = window.L, el = $('mapaBox');
   const map = L.map(el, { scrollWheelZoom: false, zoomSnap: .25, minZoom: 8, attributionControl: true });
-  map.createPane('rotulos'); map.getPane('rotulos').style.zIndex = 450; map.getPane('rotulos').style.pointerEvents = 'none';
-  const cartoAttr = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> · Bairros: IPP/Data.Rio';
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 18, attribution: cartoAttr }).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 18, pane: 'rotulos' }).addTo(map);
+  // fundo: mapa padrão do OpenStreetMap (grátis, sem chave), com as cores suavizadas pelo CSS (.mapa-fundo) para o preço se destacar
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, className: 'mapa-fundo',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Bairros: IPP/Data.Rio' }).addTo(map);
   const temHover = window.matchMedia?.('(hover: hover)').matches;
   MAPA.camada = L.geoJSON(MAPA.geo, {
     style: mapaEstilo,
