@@ -1,0 +1,31 @@
+name: Relatar um erro
+description: Algo no ImobRJ está errado, quebrado ou estranho
+title: "[Erro] "
+labels: ["erro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a melhorar o ImobRJ! Conte o que aconteceu com o máximo de detalhe que puder.
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o erro. Se quiser, cole um print (dá para arrastar a imagem aqui).
+      placeholder: "Ex.: ao escolher o bairro Tijuca, o gráfico ficou em branco."
+    validations:
+      required: true
+  - type: input
+    id: onde
+    attributes:
+      label: Em que parte do site?
+      placeholder: "Ex.: aba Comprar ou alugar, bairro Copacabana, 2 quartos"
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que você esperava ver?
+  - type: input
+    id: aparelho
+    attributes:
+      label: Aparelho e navegador (opcional)
+      placeholder: "Ex.: celular Android, Chrome"
