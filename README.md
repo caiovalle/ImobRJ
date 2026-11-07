@@ -33,7 +33,22 @@ git push
 Ou pelo VS Code: ícone *Source Control* → mensagem → **Commit** (o `.vscode/settings.json` já faz o *push*).
 O site atualiza em 1–2 minutos. Se o navegador mostrar a versão antiga, use **Ctrl+F5** ou uma janela anônima.
 
-## Atualizando os dados (quando houver planilhas novas)
+## Atualizações automáticas (robôs do GitHub Actions)
+- **Índices (IPCA, CDI, TR, Selic):** `.github/workflows/indices.yml` roda sozinho todo dia 12 e publica o site
+  se algo mudou. Para rodar na hora: *Actions → Atualizar índices → Run workflow*.
+- **ITBI:** o site da Fazenda bloqueia downloads automáticos, então a planilha nova precisa ser baixada por você.
+  Depois disso o robô `.github/workflows/itbi.yml` faz todo o resto:
+  1. Baixe no navegador a planilha nova (normalmente só a "2025 em diante" muda).
+  2. No GitHub, abra **Releases → planilhas → Edit** (ícone de lápis).
+  3. Apague o `.xlsx` antigo do mesmo período (ícone de lixeira), arraste o novo e clique **Update release**.
+  4. Em 1 minuto o robô aparece em *Actions → Atualizar ITBI*. Ele roda os 4 scripts abaixo e publica o site.
+     O relatório de qualidade fica no resumo da execução. Se não começar, use *Run workflow* nessa mesma tela.
+  - Configuração inicial (uma vez só): *Releases → Draft a new release*, tag `planilhas`, título "Planilhas da Fazenda",
+    anexe os 3 `.xlsx` e clique **Publish release**.
+  - Os anexos da Release são públicos (o repositório é público). São os mesmos dados que a Prefeitura publica.
+  - Os robôs fazem commits na `main`. Antes de mexer no site pelo VS Code, clique em *Sync/Pull* para trazer essas mudanças.
+
+## Atualizando os dados no seu computador (alternativa manual)
 Fonte: planilhas da Fazenda do Rio (2011–2018, 2019–2024, 2025 em diante), uma linha por transação:
 https://fazenda.prefeitura.rio/itbi-valores-medios-por-m2-de-transacoes-imobiliarias-por-trecho-de-logradouro/
 
