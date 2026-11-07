@@ -350,7 +350,8 @@ tailwind.config = { theme: { extend: {
             <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Painel de mercado:</b> preço do m² por cidade, bairro e rua, comparação entre bairros, tendência e comparação com IPCA/CDI.</li>
             <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Vendas por imóvel e faixas de metragem:</b> cada venda do ITBI com endereço, e preços por tamanho do imóvel (± 5 m²).</li>
             <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Referência de valor:</b> “Avaliar anúncio” e “Comprar ou alugar” estimam o valor pela mediana das vendas parecidas (mesmo prédio, rua, faixa de área ou bairro). É uma referência, não uma avaliação: a base não tem quartos, vagas, andar nem conservação.</li>
-            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 mr-2">A investigar</span><b>Mapa:</b> a base tem logradouro e bairro, mas não coordenadas. Falta definir como geolocalizar e se os termos de uso permitem.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Mapa e rankings:</b> bairros pintados pelo preço do m² ou pela valorização, e listas dos bairros e ruas que mais subiram, caíram e são mais caros.</li>
+            <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 mr-2">Feito</span><b>Página por bairro:</b> um endereço próprio para cada bairro (<a class="text-brand-600 hover:underline" href="bairros/">lista de bairros</a>), com os números em texto para aparecer nas buscas.</li>
             <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-gray-200 text-gray-700 mr-2">Depois</span><b>Relatórios:</b> liquidez e valorização por região, relatórios exportáveis.</li>
             <li><span class="inline-block text-xs font-bold rounded-full px-2 py-0.5 bg-gray-200 text-gray-700 mr-2">Qualidade</span><b>Em paralelo:</b> checar duplicidades, padronizar bairros, confirmar o dicionário do ITBI, validar o limite superior de R$/m² e revisar as referências manuais da calculadora.</li>
           </ol>
@@ -365,6 +366,7 @@ tailwind.config = { theme: { extend: {
     <span class="font-semibold text-ink">Imob<span class="text-brand-500">RJ</span></span>
     <button type="button" data-tab="method" class="foot-link hover:text-brand-600 hover:underline"><i class="fa-solid fa-circle-info mr-1"></i>Sobre os dados e a metodologia</button>
     <button type="button" data-tab="history" class="foot-link hover:text-brand-600 hover:underline"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Pesquisas recentes</button>
+    <a href="bairros/" class="hover:text-brand-600 hover:underline"><i class="fa-solid fa-list mr-1"></i>Preço do m² por bairro</a>
     <a href="https://github.com/imobrj/imobrj.github.io/issues/new?template=erro.yml" target="_blank" rel="noopener" class="hover:text-brand-600 hover:underline"><i class="fa-solid fa-bug mr-1"></i>Relatar um erro</a>
     <span class="text-xs text-gray-400 basis-full sm:basis-auto sm:ml-auto">Dados oficiais de ITBI da Prefeitura do Rio. Não é avaliação profissional nem recomendação de investimento.</span>
   </div>
