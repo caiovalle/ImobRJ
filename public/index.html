@@ -30,6 +30,7 @@ tailwind.config = { theme: { extend: {
   /* início do conteúdo fica logo abaixo do menu fixo; altura mínima evita que abas curtas "puxem" a página de volta ao banner */
   #hero.compacto .hero-big { display:none !important } #hero.compacto { padding-top:1rem; padding-bottom:1rem } #hero.compacto #heroBusca { margin-top:0 }
   #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
+  .sub-btn { padding:.4rem .9rem; border-radius:9999px; font-weight:600; color:#4b5563; white-space:nowrap } .sub-btn:hover { color:#1c2433 } .sub-btn.active { background:#fff; color:#1c2433; box-shadow:0 1px 2px rgba(28,36,51,.12) }
   .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
 </head>
@@ -40,14 +41,10 @@ tailwind.config = { theme: { extend: {
   <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
     <a href="#overview" id="logo" class="shrink-0 flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
     <nav id="tabsNav" class="tabs-nav flex gap-1 overflow-x-auto ml-2 min-w-0">
-      <button data-tab="overview" class="tab-btn active">Visão geral</button>
-      <button data-tab="compare" class="tab-btn">Comparar bairros</button>
-      <button data-tab="trend" class="tab-btn">Tendência</button>
+      <button data-tab="overview" class="tab-btn active">Preços</button>
       <button data-tab="tx" class="tab-btn">Vendas por imóvel</button>
       <button data-tab="anuncios" class="tab-btn">Avaliar anúncio</button>
       <button data-tab="calc" class="tab-btn">Comprar ou alugar</button>
-      <button data-tab="history" class="tab-btn">Histórico</button>
-      <button data-tab="method" class="tab-btn">Sobre os dados</button>
     </nav>
     <button id="btnCidade" class="ml-auto text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap hidden sm:block"><i class="fa-solid fa-city mr-1"></i>Cidade toda</button>
   </div>
@@ -88,6 +85,12 @@ tailwind.config = { theme: { extend: {
 
   <!-- LOCAL + FILTROS -->
   <section id="conteudo" class="relative z-0 mt-6">
+    <!-- sub-abas de Preços: Resumo (overview), Comparar bairros (compare) e Tendência (trend) -->
+    <div id="subPrecos" class="mb-5 inline-flex flex-wrap gap-1 rounded-full bg-[#ece8e3] p-1 text-sm">
+      <button data-tab="overview" class="sub-btn">Resumo</button>
+      <button data-tab="compare" class="sub-btn">Comparar bairros</button>
+      <button data-tab="trend" class="sub-btn">Tendência</button>
+    </div>
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight"><span id="scopeTitle">Cidade do Rio de Janeiro</span><button type="button" id="btnLimparLocal" class="hidden ml-2 align-middle text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap" aria-label="Voltar para a cidade toda"><i class="fa-solid fa-xmark mr-1"></i>cidade toda</button></h2>
@@ -174,7 +177,7 @@ tailwind.config = { theme: { extend: {
 
       <!-- HISTÓRICO -->
       <section id="tab-history" class="tab hidden">
-        <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Histórico de pesquisas</h3>
+        <div class="card"><div class="flex justify-between mb-4"><h3 class="font-bold">Pesquisas recentes</h3>
           <button id="btnClear" class="text-sm text-red-600 hover:underline">Limpar tudo</button></div>
           <ul id="histList" class="divide-y"></ul></div>
       </section>
@@ -223,9 +226,9 @@ tailwind.config = { theme: { extend: {
 
         <div class="card"><h3 class="font-bold mb-3">O que cada aba faz</h3>
           <ul class="text-sm space-y-2 text-gray-700">
-            <li><b>Visão geral:</b> preço do m², volume e tipos de imóvel do local escolhido (cidade, bairro ou rua), com linhas por faixa de metragem.</li>
-            <li><b>Comparar bairros:</b> o local escolhido contra a cidade e outros bairros, em R$/m², em base 100 ou descontando a inflação, e contra IPCA e CDI.</li>
-            <li><b>Tendência:</b> reta de tendência do preço, projeção de 12 meses e meses do ano com mais vendas.</li>
+            <li><b>Preços → Resumo:</b> preço do m², volume e tipos de imóvel do local escolhido (cidade, bairro ou rua), com linhas por faixa de metragem.</li>
+            <li><b>Preços → Comparar bairros:</b> o local escolhido contra a cidade e outros bairros, em R$/m², em base 100 ou descontando a inflação, e contra IPCA e CDI.</li>
+            <li><b>Preços → Tendência:</b> reta de tendência do preço, projeção de 12 meses e meses do ano com mais vendas.</li>
             <li><b>Vendas por imóvel:</b> cada venda registrada, com rua, número e apartamento, e os prédios com mais vendas.</li>
             <li><b>Avaliar anúncio:</b> você informa o anúncio (link e preço) e o site compara com as vendas do prédio, da rua e do bairro.</li>
             <li><b>Comprar ou alugar:</b> simulação do patrimônio comprando à vista, financiando ou alugando e investindo.</li>
@@ -244,7 +247,7 @@ tailwind.config = { theme: { extend: {
           <table class="w-full text-sm min-w-[720px]">
             <thead class="text-left text-gray-500 border-b"><tr><th class="py-2 pr-4">Fonte</th><th class="pr-4">Instituição</th><th class="pr-4">Uso no painel</th><th>Acesso e cobertura</th></tr></thead>
             <tbody class="align-top divide-y">
-              <tr><td class="py-3 pr-4 font-medium">ITBI – transações por imóvel (abas Visão geral, Comparar bairros e Tendência)</td>
+              <tr><td class="py-3 pr-4 font-medium">ITBI – transações por imóvel (aba Preços)</td>
                 <td class="pr-4">Prefeitura do Rio de Janeiro, Secretaria de Fazenda</td>
                 <td class="pr-4">Preços (mediana do R$/m²), áreas, volume de transações, tipologias</td>
                 <td><a class="text-brand-600 hover:underline" href="https://fazenda.prefeitura.rio/itbi-valores-medios-por-m2-de-transacoes-imobiliarias-por-trecho-de-logradouro/" target="_blank" rel="noopener">Página da Fazenda</a>. Planilhas 2011–2018, 2019–2024 e 2025 em diante, agregadas por rua, mês e tipologia. <span id="mItbi" class="text-gray-500"></span></td></tr>
@@ -280,7 +283,7 @@ tailwind.config = { theme: { extend: {
           <div class="card"><h3 class="font-bold mb-3">Como os dados do ITBI são tratados</h3>
             <ul class="text-sm space-y-2 text-gray-700 list-disc pl-5">
               <li>A base é a planilha da Fazenda com <b>uma linha por transação</b> (rua, número, complemento, área, valor declarado, mês e ano). As abas de mercado usam essa mesma base agrupada por rua, mês e tipo de imóvel.</li>
-              <li><b>Faixas de metragem</b> (Visão geral, Tendência, Comprar ou alugar, Avaliar anúncio e Vendas por imóvel): ao escolher uma metragem, entram as vendas com essa área ± 5 m² (ex.: 70 m² → 65 a 75 m²).</li>
+              <li><b>Faixas de metragem</b> (Preços, Comprar ou alugar, Avaliar anúncio e Vendas por imóvel): ao escolher uma metragem, entram as vendas com essa área ± 5 m² (ex.: 70 m² → 65 a 75 m²).</li>
               <li>Nas estatísticas, descartamos terrenos, duplicatas, vendas parciais, registros sem área ou valor e R$/m² fora de <b>R$ 500 a R$ 200.000</b> (erros de digitação). O limite superior é uma estimativa nossa.</li>
               <li>Uso “Não residencial” vira <b>Comercial</b>; o restante, <b>Residencial</b>. O nome da rua é unificado pelo código do logradouro (as planilhas antigas e a nova escrevem de formas diferentes); abreviações são expandidas só para a busca.</li>
               <li>Valor usado: <b>valor declarado na guia de ITBI</b> (coluna vl_declarado ou valor_transacoes, conforme a planilha). A Prefeitura não informa o tipo de transação, então não há filtro de “compra e venda”.</li>
@@ -325,6 +328,15 @@ tailwind.config = { theme: { extend: {
   </section>
 </main>
 
+<footer class="border-t border-[#ece8e3] bg-white/60">
+  <div class="max-w-7xl mx-auto px-4 py-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+    <span class="font-semibold text-ink">Imob<span class="text-brand-500">RJ</span></span>
+    <button type="button" data-tab="method" class="foot-link hover:text-brand-600 hover:underline"><i class="fa-solid fa-circle-info mr-1"></i>Sobre os dados e a metodologia</button>
+    <button type="button" data-tab="history" class="foot-link hover:text-brand-600 hover:underline"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Pesquisas recentes</button>
+    <span class="text-xs text-gray-400 basis-full sm:basis-auto sm:ml-auto">Dados oficiais de ITBI da Prefeitura do Rio. Não é avaliação profissional nem recomendação de investimento.</span>
+  </div>
+</footer>
+
 <!-- Carregamento manual do JSON (caso abra via file://) -->
 <div id="loader" class="fixed inset-0 z-[10000] bg-white flex items-center justify-center">
   <div class="text-center max-w-md p-6">
@@ -339,10 +351,10 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=pf2"></script>
-<script src="calc.js?v=pf2"></script>
-<script src="transacoes.js?v=pf2"></script>
-<script src="anuncios.js?v=pf2"></script>
-<script src="combo.js?v=pf2"></script>
+<script src="app.js?v=ab4"></script>
+<script src="calc.js?v=ab4"></script>
+<script src="transacoes.js?v=ab4"></script>
+<script src="anuncios.js?v=ab4"></script>
+<script src="combo.js?v=ab4"></script>
 </body>
 </html>

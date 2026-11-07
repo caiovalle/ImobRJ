@@ -288,7 +288,7 @@ function render() {
   const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
   const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';
-  // banner grande só na Visão geral; Comparar bairros e Tendência ficam com a busca compacta; nas demais abas ele some
+  // banner grande só em Preços → Resumo; Comparar bairros e Tendência ficam com a busca compacta; nas demais abas ele some
   $('hero').classList.toggle('hidden', semBarra || TAB === 'history'); $('hero').classList.toggle('compacto', TAB !== 'overview');
   $('btnLimparLocal').classList.toggle('hidden', S.lvl === 'cidade');
   $('scopeHead').classList.toggle('hidden', semBarra); $('filtersBar').classList.toggle('hidden', semBarra);
@@ -599,7 +599,15 @@ function suggest(q) {
     box.innerHTML = `<div class="px-4 py-3 text-sm text-gray-600"><i class="fa-solid fa-location-dot mr-2 text-brand-600"></i>${cep.length === 8 ? 'Pressione Enter para buscar o CEP ' + cep.replace(/(\d{5})(\d{3})/, '$1-$2') : 'Continue digitando o CEP…'}</div>`;
     return box.classList.remove('hidden');
   }
-  const toks = strip(q).split(' ').filter(Boolean); if (!toks.length) return box.classList.add('hidden');
+  const toks = strip(q).split(' ').filter(Boolean);
+  if (!toks.length) {               // busca vazia: mostra as pesquisas recentes
+    const h = getHist().slice(0, 6); if (!h.length) return box.classList.add('hidden');
+    box.innerHTML = '<div class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400">Pesquisas recentes</div>' +
+      h.map(x => item(x.sc.lvl === 'rua' ? 'fa-road' : 'fa-clock-rotate-left', x.sc.label.replace(/^Bairro /, ''), x.sc.lvl === 'rua' ? 'Rua' : 'Bairro', x.sc)).join('') +
+      '<button type="button" class="foot-link w-full text-left px-4 py-2 text-xs text-brand-600 hover:underline" data-tab="history">Ver todas</button>';
+    box.querySelector('.foot-link').onmousedown = e => { e.preventDefault(); box.classList.add('hidden'); irParaAba('history'); };
+    return box.classList.remove('hidden');
+  }
   const m = list => list.filter(x => toks.every(t => x.q.includes(t)));
   const bs = m(BAIRROS).slice(0, 4), rs = m(RUAS).slice(0, 8);
   box.innerHTML = [...bs.map(b => item('fa-map', b.nome, 'Bairro', { lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome })),
@@ -695,7 +703,7 @@ function bindEvents() {
   const sugs = () => [...$('suggest').querySelectorAll('.sug')];
   const mark = i => { const l = sugs(); l.forEach(x => x.classList.remove('act')); act = l.length ? (i + l.length) % l.length : -1; if (act >= 0) { l[act].classList.add('act'); l[act].scrollIntoView({ block: 'nearest' }); } };
   inp.addEventListener('input', () => { act = -1; });
-  inp.addEventListener('focus', () => { if (inp.value) suggest(inp.value); });
+  inp.addEventListener('focus', () => suggest(inp.value));
   inp.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); mark(act + 1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); mark(act - 1); }
@@ -735,7 +743,8 @@ function bindEvents() {
   $('popular').addEventListener('click', e => { const p = e.target.closest('.pop'); if (p) { const b = BAIRROS.find(x => x.nb === p.dataset.nb); selecionar({ lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }); } });
   document.querySelectorAll('.tipo').forEach(p => p.onclick = () => { F.tipo = p.dataset.v; syncFilters(); render(); });
 
-  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => irParaAba(b.dataset.tab));
+  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => irParaAba(b.dataset.tab === 'overview' && !PRECOS.includes(TAB) ? PRECO_ULT : b.dataset.tab === 'overview' ? TAB : b.dataset.tab));
+  document.querySelectorAll('.sub-btn, .foot-link').forEach(b => b.onclick = () => irParaAba(b.dataset.tab));
   $('logo').onclick = e => { e.preventDefault(); irParaAba('overview', true, false); window.scrollTo({ top: 0, behavior: 'smooth' }); };   // logo = início, com o banner
   window.addEventListener('popstate', () => { if (lerLocalDoEndereco()) syncSelects(); irParaAba(abaDoEndereco(), false); });   // botão "voltar" troca de aba (e de local)
   document.addEventListener('click', e => {
@@ -789,9 +798,15 @@ function localDeAba(nb) {
   S = { lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }; F.gran = 1; $('fGran').value = 1;
   addHistory(); syncSelects(); gravarEndereco();
 }
+// o menu tem 4 abas: "Preços" reúne Resumo (overview), Comparar bairros (compare) e Tendência (trend), escolhidos nas sub-abas
+const PRECOS = ['overview', 'compare', 'trend'];
+let PRECO_ULT = 'overview';           // última sub-aba de Preços (o botão "Preços" volta para ela)
 function marcarAba() {
+  if (PRECOS.includes(TAB)) PRECO_ULT = TAB;
+  $('subPrecos').classList.toggle('hidden', !PRECOS.includes(TAB));
+  document.querySelectorAll('.sub-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === TAB));
   document.querySelectorAll('.tab-btn').forEach(x => {
-    const on = x.dataset.tab === TAB; x.classList.toggle('active', on);
+    const on = x.dataset.tab === TAB || (x.dataset.tab === 'overview' && PRECOS.includes(TAB)); x.classList.toggle('active', on);
     if (on) { const nav = $('tabsNav'); nav.scrollTo({ left: x.offsetLeft - (nav.clientWidth - x.offsetWidth) / 2, behavior: 'smooth' }); }
   });
 }
