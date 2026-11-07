@@ -821,6 +821,8 @@ function irParaAba(aba, registrar = true, rolar = true) {
   if (!ABAS.includes(aba)) aba = 'overview';
   const mudou = aba !== TAB; TAB = aba; marcarAba();
   if (registrar && mudou) history.pushState(null, '', enderecoAtual()); else gravarEndereco();   // pushState não faz a página pular (diferente de mudar location.hash)
-  render(); if (rolar) irParaConteudo();
+  render();
+  // em Preços sem local escolhido (busca vazia), mostra o banner com a busca em vez de pular para o conteúdo
+  if (rolar) PRECOS.includes(aba) && S.lvl === 'cidade' ? window.scrollTo({ top: 0, behavior: 'smooth' }) : irParaConteudo();
 }
 init();
