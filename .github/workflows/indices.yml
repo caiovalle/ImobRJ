@@ -1,0 +1,50 @@
+name: Atualizar índices (IPCA, CDI, TR, Selic)
+
+# Roda sozinho todo dia 12 (o IPCA do mês anterior sai por volta do dia 10) e também pode ser
+# disparado à mão em Actions -> "Atualizar índices" -> Run workflow.
+on:
+  schedule:
+    - cron: '0 12 12 * *'   # dia 12 de cada mês, 12:00 UTC (9h em Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: write   # para salvar o indices.json no repositório
+  actions: write    # para pedir a publicação do site depois
+
+concurrency:
+  group: dados
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Baixar índices do Banco Central
+        run: python scripts/atualizar_indices.py
+
+      - name: Salvar no repositório (só se mudou)
+        id: salvar
+        run: |
+          if git diff --quiet -- public/indices.json; then
+            echo "Nada mudou nos índices."
+            echo "mudou=nao" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/indices.json
+          git commit -m "Índices atualizados automaticamente ($(date -u +%Y-%m))"
+          git push
+          echo "mudou=sim" >> "$GITHUB_OUTPUT"
+
+      # Um push feito pelo próprio robô não dispara outros workflows, então pedimos a publicação explicitamente.
+      - name: Publicar o site
+        if: steps.salvar.outputs.mudou == 'sim'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
