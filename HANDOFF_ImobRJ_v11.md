@@ -2,7 +2,7 @@
 
 > Documento para continuar o desenvolvimento em uma nova conversa.
 > **Fonte da verdade = os arquivos do repositório do Caio**, não o ambiente do assistente (ele é apagado entre sessões).
-> Repositório: `https://github.com/caiovalle/ImobRJ` · Site: `https://caiovalle.github.io/ImobRJ/`
+> Repositório: `https://github.com/imobrj/imobrj.github.io` · Site: `https://imobrj.github.io/`
 
 ---
 
