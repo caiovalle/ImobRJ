@@ -1,4 +1,4 @@
-// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.  (versão calc12)
+// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.
 // Usa do app.js: $, areaGet, areaSet, brl, num, mk, lineDs, yBRL, S, BAIRROS, MED, MED_MIN, medOf, IDX, fator, ymLabel.
 // Simulação educativa, mês a mês. Não é recomendação.
 
@@ -21,7 +21,6 @@ const CALC_REF = {
   corretagem: 6,       // comissão de venda (estimativa usual; negociável)
   manutencao: 0.5      // manutenção e reformas, % a.a. do valor do imóvel (estimativa)
 };
-// Versão calc12
 const f2 = n => (Math.round(n * 100) / 100).toString().replace('.', ',');
 const CAMPOS_MOEDA = new Set(['cDinheiro','cOrcamento','cValor','cFgts','cSeguros','cTarifa','cAluguel','cAmortAnual']);
 const parseMoeda = v => { const d = String(v ?? '').replace(/\D/g, ''); return d ? +d : 0; };
@@ -110,7 +109,7 @@ function calcMontar() {
       ${grupo('Seu dinheiro', ['cDinheiro', 'cFgts', 'cOrcamento'])}
     ${grupo('Imóvel e compra', ['cValor', 'cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
       ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
-      <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
+      <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" id="cPerfilSelic" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
       ${grupo('Aluguel', ['cAluguel', 'cReajAluguel'], `<div class="sm:col-span-2"><label for="cAlugPct" class="text-xs font-semibold text-gray-600">Ou informe o aluguel em % do valor do imóvel</label><div class="mt-1 flex items-center gap-2"><input id="cAlugPct" type="number" inputmode="decimal" step="0.1" min="0" class="sel w-28 text-right"><span class="text-xs text-gray-500">% a.a. do valor</span></div><p class="text-[11px] text-gray-400 mt-0.5">Converte para R$/mês no campo “Aluguel inicial” (e vice-versa).</p></div>` + chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
       ${grupo('Investimento', ['cRendReal', 'cIR', 'cIpca'])}
       ${grupo('Comparação', ['cHoriz', 'cCorret', 'cIRGanho'], chk('cVender', 'Contar o imóvel como se fosse vendido no fim (desconta corretagem e IR)'))}
@@ -233,7 +232,8 @@ function calcSugerir() {
   setSug('cPrazo', 30, 'sugestão: 30 anos (máx. 35)');
   setSug('cJuros', CALC_REF.juros, `Caixa SBPE: 10,99% a 11,49% + TR (${CALC_REF.data})`);
   setSug('cTR', s.tr, `12 meses até ${s.trAte}: ${f2(s.tr)}%${auto('tr')}`);
-  setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês`);
+  setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês (${CALC_REF.data})`);
+  { const b = $('cPerfilSelic'); b.dataset.nom = s.selic; b.textContent = `Estável · Selic atual (${f2(s.selic)}%)`; }   // acompanha a Selic do indices.json
   setSug('cAmortAnual', 0, '0 = sem amortização extra · reduz prazo e juros');
   calcAmortFonteInfo();
   const alug = Math.round(V * CALC_REF.yieldAluguel / 100 / 12 / 50) * 50;
@@ -241,14 +241,14 @@ function calcSugerir() {
   {   // aluguel → % do valor do imóvel (item 2)
     const a = cv('cAluguel'), m = V > 0 ? a / V * 100 : 0, aa = m * 12, ref = CALC_REF.yieldAluguel;
     const p2 = x => x.toFixed(2).replace('.', ','), cmp = Math.abs(aa - ref) < 0.005 ? 'igual à média nacional' : aa < ref ? 'abaixo da média nacional' : 'acima da média nacional';
-    $('cAluguelSug').innerHTML = a > 0 ? `<b>${p2(m)}% a.m. = ${p2(aa)}% a.a.</b> do valor · ${cmp} (${f2(ref)}% a.a., FipeZAP)` +
-      (CALC_EDIT.has('cAluguel') ? ` · sugestão: ${brl(alug)}` : '') : `sugestão: ${brl(alug)} (${f2(ref)}% a.a. do valor, FipeZAP)`;
+    $('cAluguelSug').innerHTML = a > 0 ? `<b>${p2(m)}% a.m. = ${p2(aa)}% a.a.</b> do valor · ${cmp} (${f2(ref)}% a.a., FipeZAP, ${CALC_REF.data})` +
+      (CALC_EDIT.has('cAluguel') ? ` · sugestão: ${brl(alug)}` : '') : `sugestão: ${brl(alug)} (${f2(ref)}% a.a. do valor, média nacional FipeZAP, ${CALC_REF.data})`;
     if (document.activeElement !== $('cAlugPct')) $('cAlugPct').value = a > 0 && V > 0 ? Math.round(aa * 100) / 100 : '';
   }
   const acompanha = $('cAlugVal').checked;
   $('cReajAluguel').disabled = acompanha; $('cReajAluguel').classList.toggle('opacity-50', acompanha);
   setSug('cReajAluguel', s.ipca, acompanha ? 'usando a valorização do imóvel' : `IPCA 12 meses: ${f2(s.ipca)}%`);
-  setSug('cRendReal', CALC_REF.rendReal, `Tesouro IPCA+ longo: ~${f2(CALC_REF.rendReal)}% · Selic atual ${f2(s.selic)}%${auto('selic')}`);
+  setSug('cRendReal', CALC_REF.rendReal, `Tesouro IPCA+ longo: ~${f2(CALC_REF.rendReal)}% (${CALC_REF.data}) · Selic atual ${f2(s.selic)}%${auto('selic')}`);
   setSug('cIR', 15, '15% (aplicações acima de 2 anos)');
   setSug('cIpca', s.ipca, `IPCA 12 meses até ${s.ipcaAte}: ${f2(s.ipca)}%${auto('ipca')}`);
   setSug('cHoriz', cv('cPrazo') || 30, 'sugestão: igual ao prazo');

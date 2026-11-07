@@ -253,8 +253,8 @@ function anAvaliar() {
     const y = a.preco * 12 / valorRef * 100, refY = CALC_REF.yieldAluguel; res.yield = y; res.valorRef = valorRef;
     cor = y > refY * 1.15 ? 'text-red-600' : y < refY * 0.85 ? 'text-emerald-600' : 'text-gray-800';
     destaque = `${y.toFixed(1).replace('.', ',')}% <span class="text-base font-semibold text-gray-500">ao ano do valor do imóvel</span>`;
-    texto = `O imóvel vale cerca de <b>${brl(valorRef)}</b> pelas vendas do ITBI (${esc(ref.nome)}: ${brl(ref.med)}/m², ${num(ref.n)} venda${ref.n > 1 ? 's' : ''}). O aluguel pedido de ${brl(a.preco)}/mês equivale a <b>${y.toFixed(1).replace('.', ',')}% ao ano</b> desse valor; a média nacional é ${f2(refY)}% (FipeZAP).
-      ${y > refY * 1.15 ? 'Aluguel <b class="text-red-600">caro</b> para o preço da região: comprar tende a compensar mais.' : y < refY * 0.85 ? 'Aluguel <b class="text-emerald-600">barato</b> para o preço da região: alugar tende a compensar.' : 'Aluguel <b>na média</b> para o preço da região.'}`;
+    texto = `O imóvel vale cerca de <b>${brl(valorRef)}</b> pelas vendas do ITBI (${esc(ref.nome)}: ${brl(ref.med)}/m², ${num(ref.n)} venda${ref.n > 1 ? 's' : ''}). O aluguel pedido de ${brl(a.preco)}/mês equivale a <b>${y.toFixed(1).replace('.', ',')}% ao ano</b> desse valor; a referência é ${f2(refY)}% ao ano (média <b>nacional</b> do FipeZAP, ${CALC_REF.data}; não é um número do Rio nem do bairro).
+      ${y > refY * 1.15 ? 'O aluguel pedido está <b class="text-red-600">acima</b> dessa referência para o preço do imóvel: comprar tende a compensar mais.' : y < refY * 0.85 ? 'O aluguel pedido está <b class="text-emerald-600">abaixo</b> dessa referência para o preço do imóvel: alugar tende a compensar.' : 'O aluguel pedido está <b>perto</b> dessa referência.'} Confira com outros anúncios de aluguel parecidos no bairro.`;
   }
   AN.ult = res;
   const linhas = cam.C.map(c => `<tr class="border-b last:border-0 ${c === ref ? 'bg-[#f6f3ef] font-semibold' : ''}"><td class="py-2 pr-3">${esc(c.nome)}${c === ref ? ' <span class="text-[11px] text-brand-600">referência</span>' : ''}</td>
