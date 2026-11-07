@@ -123,7 +123,7 @@ def pagina(titulo, descricao, caminho, corpo):
 {corpo}
 </main>
 <footer>Fonte: ITBI da Prefeitura do Rio de Janeiro (Secretaria de Fazenda), vendas registradas por imóvel. Valores declarados na compra, sem descontar a inflação.
-Não é avaliação profissional nem recomendação de investimento. <a href="/#method">Sobre os dados e a metodologia</a> ·
+Não é avaliação profissional nem recomendação de investimento. <a href="/#method">Sobre os dados e a metodologia</a> · <a href="/privacidade/">Privacidade</a> ·
 <a href="https://github.com/imobrj/imobrj.github.io/issues/new?template=erro.yml" rel="noopener">Relatar um erro</a>
 <script data-goatcounter="https://imobrj.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </footer>
