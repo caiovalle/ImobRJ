@@ -6,7 +6,7 @@ nas abas Visão geral, Tendência e Comprar ou alugar.
 Lê os arquivos já publicados em public/transacoes/*.json (saída do gerar_transacoes_site.py, que chama este
 script no final). Entram só as vendas usadas nas estatísticas (flags = 0: venda integral, R$/m² dentro da faixa).
 
-Formato (agrupado como o medianas.json, por bairro, tipologia, tipo e mês):
+Formato (agrupado por bairro, tipologia, tipo e mês):
     {"formato":1,"passo":10,"bairros":[nome,...],"nbs":[chave,...],"tipologias":[...],
      "grupos":[[bairro,tipologia,comercial,ano,mes,[a0,d1,d2,...],[v0,v1,v2,...]], ...]}
     áreas em m² inteiros, ordenadas (a0 = 1ª área; d1, d2... = diferença para a anterior);

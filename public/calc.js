@@ -1,4 +1,4 @@
-// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.  (versão calc12)
+// ImobRJ — aba "Comprar ou alugar": à vista × financiado × alugar e investir.
 // Usa do app.js: $, areaGet, areaSet, brl, num, mk, lineDs, yBRL, S, BAIRROS, MED, MED_MIN, medOf, IDX, fator, ymLabel.
 // Simulação educativa, mês a mês. Não é recomendação.
 
@@ -21,7 +21,6 @@ const CALC_REF = {
   corretagem: 6,       // comissão de venda (estimativa usual; negociável)
   manutencao: 0.5      // manutenção e reformas, % a.a. do valor do imóvel (estimativa)
 };
-// Versão calc12
 const f2 = n => (Math.round(n * 100) / 100).toString().replace('.', ',');
 const CAMPOS_MOEDA = new Set(['cDinheiro','cOrcamento','cValor','cFgts','cSeguros','cTarifa','cAluguel','cAmortAnual']);
 const parseMoeda = v => { const d = String(v ?? '').replace(/\D/g, ''); return d ? +d : 0; };
@@ -100,18 +99,27 @@ function calcMontar() {
       <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Comprar ou alugar?</h2>
       <p class="text-gray-600 mt-2 max-w-3xl">Compara o patrimônio ao final do período em três caminhos: <b>comprar à vista</b>, <b>comprar financiado</b> e <b>alugar e investir</b> a diferença. Todos os campos são editáveis; as sugestões são referências de mercado. Toque em <i class="fa-regular fa-circle-question"></i> para entender cada item.</p>
     </div>
-    <div class="card flex flex-wrap items-end gap-3 text-sm">
-      <div><label class="text-xs font-semibold text-gray-600">Bairro</label><select id="cBairro" class="sel block mt-1 min-w-[12rem]"></select></div>
-      <div><label class="text-xs font-semibold text-gray-600">Área</label><div class="flex items-center gap-2 mt-1"><input id="cArea" type="number" min="10" step="1" value="${areaGet()}" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
-      <button id="cUsarMed" class="pill on"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Estimar valor pela mediana</button>
-      <p id="cMedInfo" class="text-xs text-gray-500 basis-full"></p>
+    <div class="card">
+      <h3 class="font-bold mb-1">O essencial</h3>
+      <p class="text-xs text-gray-500 mb-3">Com estes campos já dá para ver o resultado. O resto está em “Ajustes avançados”, mais abaixo, com sugestões de mercado.</p>
+      <div class="flex flex-wrap items-end gap-3 text-sm">
+        <div><label class="text-xs font-semibold text-gray-600">Bairro</label><select id="cBairro" class="sel block mt-1 min-w-[12rem]"></select></div>
+        <div><label class="text-xs font-semibold text-gray-600">Área</label><div class="flex items-center gap-2 mt-1"><input id="cArea" type="number" min="10" step="1" value="${areaGet()}" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
+        <button id="cUsarMed" class="pill on"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Estimar valor pela mediana</button>
+        <p id="cMedInfo" class="text-xs text-gray-500 basis-full"></p>
+      </div>
+      <div class="grid sm:grid-cols-3 gap-4 mt-4">${['cValor', 'cDinheiro', 'cAluguel'].map(id => campo(CALC_CAMPOS.find(c => c[0] === id))).join('')}</div>
     </div>
-    <div class="grid lg:grid-cols-2 gap-6">
-      ${grupo('Seu dinheiro', ['cDinheiro', 'cFgts', 'cOrcamento'])}
-    ${grupo('Imóvel e compra', ['cValor', 'cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
+    <div id="cResumo" class="space-y-4"></div>
+    <div class="card"><h3 class="font-bold mb-1">Patrimônio ao longo do tempo</h3><p class="text-xs text-gray-500 mb-3">Imóvel (valorizado, menos custos de venda se marcado) − saldo devedor + investimentos líquidos de IR + FGTS, em valores de hoje.</p><div class="chart-box"><canvas id="cCalcChart"></canvas></div></div>
+    <details id="cAvancado" class="card group">
+      <summary class="cursor-pointer font-bold flex items-center gap-2 list-none"><i class="fa-solid fa-sliders text-brand-600"></i>Ajustes avançados<span class="text-xs font-normal text-gray-500">financiamento, juros, impostos, aluguel, investimentos e horizonte</span><i class="fa-solid fa-chevron-down ml-auto text-gray-400 group-open:rotate-180 transition"></i></summary>
+      <div class="grid lg:grid-cols-2 gap-6 mt-4">
+      ${grupo('Seu dinheiro', ['cFgts', 'cOrcamento'])}
+      ${grupo('Imóvel e compra', ['cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
       ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
-      <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
-      ${grupo('Aluguel', ['cAluguel', 'cReajAluguel'], `<div class="sm:col-span-2"><label for="cAlugPct" class="text-xs font-semibold text-gray-600">Ou informe o aluguel em % do valor do imóvel</label><div class="mt-1 flex items-center gap-2"><input id="cAlugPct" type="number" inputmode="decimal" step="0.1" min="0" class="sel w-28 text-right"><span class="text-xs text-gray-500">% a.a. do valor</span></div><p class="text-[11px] text-gray-400 mt-0.5">Converte para R$/mês no campo “Aluguel inicial” (e vice-versa).</p></div>` + chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
+      <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" id="cPerfilSelic" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
+      ${grupo('Aluguel', ['cReajAluguel'], `<div class="sm:col-span-2"><label for="cAlugPct" class="text-xs font-semibold text-gray-600">Ou informe o aluguel em % do valor do imóvel</label><div class="mt-1 flex items-center gap-2"><input id="cAlugPct" type="number" inputmode="decimal" step="0.1" min="0" class="sel w-28 text-right"><span class="text-xs text-gray-500">% a.a. do valor</span></div><p class="text-[11px] text-gray-400 mt-0.5">Converte para R$/mês no campo “Aluguel inicial” (e vice-versa).</p></div>` + chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
       ${grupo('Investimento', ['cRendReal', 'cIR', 'cIpca'])}
       ${grupo('Comparação', ['cHoriz', 'cCorret', 'cIRGanho'], chk('cVender', 'Contar o imóvel como se fosse vendido no fim (desconta corretagem e IR)'))}
       <div class="card flex flex-wrap items-center gap-3 text-sm self-start"><span class="font-semibold">Sistema de amortização:</span>
@@ -120,9 +128,8 @@ function calcMontar() {
         <button id="cReset" class="ml-auto text-xs text-brand-600 hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i>Voltar às sugestões</button>
         <p id="cSisHelp" class="hidden basis-full text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 leading-relaxed"><b>SAC</b>: a amortização é igual todo mês, então a parcela começa mais alta e cai com o tempo; paga menos juros no total. <b>Price</b>: parcela fixa (antes da TR), começa menor que no SAC, mas o saldo cai mais devagar e o total de juros é maior.</p>
       </div>
-    </div>
-    <div id="cResumo" class="space-y-4"></div>
-    <div class="card"><h3 class="font-bold mb-1">Patrimônio ao longo do tempo</h3><p class="text-xs text-gray-500 mb-3">Imóvel (valorizado, menos custos de venda se marcado) − saldo devedor + investimentos líquidos de IR + FGTS, em valores de hoje.</p><div class="chart-box"><canvas id="cCalcChart"></canvas></div></div>
+      </div>
+    </details>
     <div id="cSens" class="card"></div>
     <div class="card space-y-3">
       <div class="flex flex-wrap items-center gap-2"><h3 class="font-bold mr-auto">Cenários salvos</h3>
@@ -167,7 +174,7 @@ function calcMontar() {
     const sis = e.target.closest('.cSis'); if (sis) { root.querySelectorAll('.cSis').forEach(x => x.classList.toggle('on', x === sis)); calcRodar(); return; }
     const perfil = e.target.closest('.cPerfil'); if (perfil) { const ipca = cv('cIpca'), nom = +perfil.dataset.nom, real = ((1 + nom / 100) / (1 + ipca / 100) - 1) * 100; $('cRendReal').value = real.toFixed(2); CALC_EDIT.add('cRendReal'); root.querySelectorAll('.cPerfil').forEach(x => x.classList.toggle('on', x === perfil)); $('cPerfilInfo').textContent = `${perfil.textContent.trim()}: ${f2(nom)}% nominal equivale a ${f2(real)}% real com IPCA de ${f2(ipca)}%.`; calcRodar(); }
   });
-  $('cBairro').onchange = () => calcUsarMediana();
+  $('cBairro').onchange = () => { localDeAba($('cBairro').value); renderCalc.nb = $('cBairro').value; calcUsarMediana(); };   // vale para o site todo
   $('cAmortFonte').onchange = () => { calcAmortFonteInfo(); calcRodar(); };
   $('cenSalvar').onclick = cenSalvar;
   $('cenNome').onkeydown = e => { if (e.key === 'Enter') cenSalvar(); };
@@ -233,7 +240,8 @@ function calcSugerir() {
   setSug('cPrazo', 30, 'sugestão: 30 anos (máx. 35)');
   setSug('cJuros', CALC_REF.juros, `Caixa SBPE: 10,99% a 11,49% + TR (${CALC_REF.data})`);
   setSug('cTR', s.tr, `12 meses até ${s.trAte}: ${f2(s.tr)}%${auto('tr')}`);
-  setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês`);
+  setSug('cSeguros', CALC_REF.seguros, `referência: ~R$ ${CALC_REF.seguros}/mês (${CALC_REF.data})`);
+  { const b = $('cPerfilSelic'); b.dataset.nom = s.selic; b.textContent = `Estável · Selic atual (${f2(s.selic)}%)`; }   // acompanha a Selic do indices.json
   setSug('cAmortAnual', 0, '0 = sem amortização extra · reduz prazo e juros');
   calcAmortFonteInfo();
   const alug = Math.round(V * CALC_REF.yieldAluguel / 100 / 12 / 50) * 50;
@@ -241,14 +249,14 @@ function calcSugerir() {
   {   // aluguel → % do valor do imóvel (item 2)
     const a = cv('cAluguel'), m = V > 0 ? a / V * 100 : 0, aa = m * 12, ref = CALC_REF.yieldAluguel;
     const p2 = x => x.toFixed(2).replace('.', ','), cmp = Math.abs(aa - ref) < 0.005 ? 'igual à média nacional' : aa < ref ? 'abaixo da média nacional' : 'acima da média nacional';
-    $('cAluguelSug').innerHTML = a > 0 ? `<b>${p2(m)}% a.m. = ${p2(aa)}% a.a.</b> do valor · ${cmp} (${f2(ref)}% a.a., FipeZAP)` +
-      (CALC_EDIT.has('cAluguel') ? ` · sugestão: ${brl(alug)}` : '') : `sugestão: ${brl(alug)} (${f2(ref)}% a.a. do valor, FipeZAP)`;
+    $('cAluguelSug').innerHTML = a > 0 ? `<b>${p2(m)}% a.m. = ${p2(aa)}% a.a.</b> do valor · ${cmp} (${f2(ref)}% a.a., FipeZAP, ${CALC_REF.data})` +
+      (CALC_EDIT.has('cAluguel') ? ` · sugestão: ${brl(alug)}` : '') : `sugestão: ${brl(alug)} (${f2(ref)}% a.a. do valor, média nacional FipeZAP, ${CALC_REF.data})`;
     if (document.activeElement !== $('cAlugPct')) $('cAlugPct').value = a > 0 && V > 0 ? Math.round(aa * 100) / 100 : '';
   }
   const acompanha = $('cAlugVal').checked;
   $('cReajAluguel').disabled = acompanha; $('cReajAluguel').classList.toggle('opacity-50', acompanha);
   setSug('cReajAluguel', s.ipca, acompanha ? 'usando a valorização do imóvel' : `IPCA 12 meses: ${f2(s.ipca)}%`);
-  setSug('cRendReal', CALC_REF.rendReal, `Tesouro IPCA+ longo: ~${f2(CALC_REF.rendReal)}% · Selic atual ${f2(s.selic)}%${auto('selic')}`);
+  setSug('cRendReal', CALC_REF.rendReal, `Tesouro IPCA+ longo: ~${f2(CALC_REF.rendReal)}% (${CALC_REF.data}) · Selic atual ${f2(s.selic)}%${auto('selic')}`);
   setSug('cIR', 15, '15% (aplicações acima de 2 anos)');
   setSug('cIpca', s.ipca, `IPCA 12 meses até ${s.ipcaAte}: ${f2(s.ipca)}%${auto('ipca')}`);
   setSug('cHoriz', cv('cPrazo') || 30, 'sugestão: igual ao prazo');
@@ -261,7 +269,7 @@ function calcSugerir() {
 }
 function calcInfoBairro() {
   const nb = $('cBairro').value, info = calcBairroInfo(nb), s = calcSugestoes(), f = n => n.toFixed(1).replace('.', ',');
-  if (!MED) $('cMedInfo').textContent = 'Medianas ainda carregando (ou medianas.json não encontrado).';
+  if (!MED) $('cMedInfo').textContent = 'Carregando as vendas por metragem… (se demorar, recarregue a página)';
   else if (!nb) $('cMedInfo').textContent = 'Escolha um bairro para estimar o valor pela mediana do R$/m².';
   else if (!info?.m2) $('cMedInfo').textContent = `Poucas vendas residenciais recentes neste bairro (mín. ${MED_MIN}).`;
   else $('cMedInfo').innerHTML = (info.fx?.m2 != null
@@ -563,7 +571,7 @@ function calcRodar() {
   const aviso = (cls, t) => `<p class="text-xs ${cls} mt-1">${t}</p>`;
   const av = [];
   if (r.viavelA) av.push(aviso('text-gray-600', `Com ${brl(r.dinheiro)} você consegue comprar à vista (precisa de ${brl(r.needA)}${p.fgts > 0 ? ', já usando o FGTS' : ''}). A comparação principal é <b>comprar à vista × continuar no aluguel e investir esse dinheiro</b>.` +
-    (p.finOpc ? '' : ' Para ver também o financiamento, marque a opção em “Financiamento”.')));
+    (p.finOpc ? '' : ' Para ver também o financiamento, marque a opção em “Ajustes avançados → Financiamento”.')));
   else av.push(aviso('text-gray-600', `Com ${brl(r.dinheiro)} não dá para comprar à vista (faltam ${brl(r.faltaA)}). A comparação é <b>financiar × alugar e investir o mesmo dinheiro</b>.`));
   if (!r.viavelB && r.mostra.includes('b')) av.push(aviso('text-red-600 font-semibold', `Para financiar faltam ${brl(r.faltaB)}: entrada, ITBI, cartório e tarifas (menos FGTS) somam ${brl(r.needB)}. O resultado do financiado é só ilustrativo.`));
   if (r.mostra.includes('b') && p.entrada < 20 && r.temFin) av.push(aviso('text-amber-700', 'A maioria dos bancos financia no máximo 80% do valor (entrada mínima de 20%).'));
@@ -622,11 +630,13 @@ function calcRodar() {
 
 function renderCalc() {
   if (!CALC_OK) {
-    calcMontar();
+    calcMontar(); if (window.comboMelhorar) comboMelhorar($('cBairro'));
     if (S.lvl !== 'cidade' && S.nb) $('cBairro').value = S.nb;   // puxa o bairro selecionado no site
+    renderCalc.nb = S.nb;
     calcSugerir(); calcUsarMediana(true); cenRender(); if (AREAS) renderCalc.fx = true;
   } else {
-    if (S.lvl !== 'cidade' && S.nb && !$('cBairro').value) $('cBairro').value = S.nb;
+    if (S.lvl !== 'cidade' && S.nb && S.nb !== renderCalc.nb) { $('cBairro').value = S.nb; calcUsarMediana(true); }   // local mudou em outra aba
+    renderCalc.nb = S.nb;
     if (+$('cArea').value !== areaGet()) { $('cArea').value = areaGet(); calcUsarMediana(true); }   // área mudou na aba Tendência
     else if (AREAS && !renderCalc.fx && !CALC_EDIT.has('cValor')) calcUsarMediana(true);              // faixas de metragem chegaram depois
     if (AREAS) renderCalc.fx = true;
