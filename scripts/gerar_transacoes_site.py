@@ -6,7 +6,8 @@ Saída (pasta public/transacoes/):
     index.json        lista de bairros (nome, chave, arquivo, nº de transações, período)
     <bairro>.json     transações do bairro, em formato compacto (carregado só quando o usuário escolhe o bairro)
 E, no final, public/areas.json (gerar_areas.py): área e R$/m² de cada venda, para as faixas de metragem,
-e public/rankings.json (gerar_rankings.py): rankings de bairros e ruas e a valorização do mapa.
+public/rankings.json (gerar_rankings.py): rankings de bairros e ruas e a valorização do mapa,
+e public/bairros/ + sitemap.xml (gerar_paginas_bairros.py): uma página por bairro, para buscas no Google.
 
 O que entra: imóveis Residenciais e Comerciais com valor e área válidos e sem duplicata.
 O que NÃO entra: terrenos (Territorial), linhas com área/valor inválidos e duplicadas.
@@ -107,6 +108,9 @@ def main():
     # rankings da sub-aba Preços → Rankings e cor "Valorização" do mapa (public/rankings.json)
     from gerar_rankings import gerar as gerar_rankings   # noqa: E402
     gerar_rankings(saida, saida.parent / "rankings.json")
+    # uma página por bairro para o Google (public/bairros/), sitemap.xml e robots.txt
+    from gerar_paginas_bairros import gerar as gerar_paginas   # noqa: E402
+    gerar_paginas(saida, saida.parent)
 
 
 if __name__ == "__main__":

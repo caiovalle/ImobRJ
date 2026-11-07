@@ -14,6 +14,7 @@ C:\Projetos\ITBI Git\
 │  │  ├─ indices.json             <- IPCA, CDI, TR e Selic (atualizar_indices.py)
 │  │  ├─ areas.json               <- área e R$/m² de cada venda: faixas de metragem e medianas (gerar_areas.py)
 │  │  ├─ rankings.json            <- rankings de bairros/ruas e valorização do mapa (gerar_rankings.py)
+│  │  ├─ bairros\                 <- uma página HTML por bairro + sitemap.xml/robots.txt (gerar_paginas_bairros.py)
 │  │  └─ transacoes\              <- um JSON por bairro + index.json (gerar_transacoes_site.py)
 │  ├─ scripts\
 │  ├─ .vscode\settings.json       <- Commit no VS Code já envia ao GitHub
@@ -59,7 +60,7 @@ Coloque os `.xlsx` em `C:\Projetos\ITBI Git\planilhas_sefaz` e rode, no terminal
 pip install openpyxl                      # só na primeira vez
 python scripts/processar_itbi.py          # xlsx -> planilhas_sefaz\saida\itbi_limpo.csv + relatorio_qualidade.txt
 python scripts/gerar_dados_agregados.py   # -> public/dados.json e meta.json
-python scripts/gerar_transacoes_site.py   # -> public/transacoes/*.json, areas.json (faixas de metragem) e rankings.json
+python scripts/gerar_transacoes_site.py   # -> public/transacoes/*.json, areas.json, rankings.json e bairros/ (páginas)
 python scripts/atualizar_indices.py       # IPCA, CDI, TR e meta Selic (Banco Central) -> public/indices.json
 ```
 Leia o `relatorio_qualidade.txt` antes de publicar. A base completa nunca vai para o GitHub

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://imobrj.github.io/sitemap.xml
