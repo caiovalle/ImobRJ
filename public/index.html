@@ -37,6 +37,7 @@ tailwind.config = { theme: { extend: {
   #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
   .sub-btn { padding:.4rem .9rem; border-radius:4px; font-weight:600; color:#4e4237; white-space:nowrap } .sub-btn:hover { color:#2a211a } .sub-btn.active { background:#1f4d3a; color:#fffbf4 }
   .mapa-tip, .mapa-pop .leaflet-popup-content { font-family:"Work Sans", system-ui, sans-serif; font-size:.8rem; line-height:1.4; color:#2a211a }
+  .mapa-fundo { filter:grayscale(.85) sepia(.15) brightness(1.04) contrast(.9) }
   .leaflet-container { font-family:"Work Sans", system-ui, sans-serif }
   .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
@@ -294,7 +295,7 @@ tailwind.config = { theme: { extend: {
               <tr><td class="py-3 pr-4 font-medium">Limite de Bairros (sub-aba Mapa)</td>
                 <td class="pr-4">Prefeitura do Rio, Instituto Pereira Passos (IPP)</td>
                 <td class="pr-4">Contorno dos 166 bairros oficiais no mapa de preços</td>
-                <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/" target="_blank" rel="noopener">Data.Rio</a>. Contornos simplificados para o site ficar leve (precisão de dezenas de metros). Fundo do mapa: <a class="text-brand-600 hover:underline" href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> sobre dados do OpenStreetMap; biblioteca Leaflet. Vila Kennedy, Gericinó, Grumari, Cidade Universitária e Argentino não aparecem como bairro nas planilhas do ITBI (as vendas de lá vêm dentro de bairros vizinhos), por isso ficam sem cor.</td></tr>
+                <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/" target="_blank" rel="noopener">Data.Rio</a>. Contornos simplificados para o site ficar leve (precisão de dezenas de metros). Fundo do mapa: <a class="text-brand-600 hover:underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (colaboradores do OSM); biblioteca Leaflet. Vila Kennedy, Gericinó, Grumari, Cidade Universitária e Argentino não aparecem como bairro nas planilhas do ITBI (as vendas de lá vêm dentro de bairros vizinhos), por isso ficam sem cor.</td></tr>
               <tr><td class="py-3 pr-4 font-medium">ViaCEP</td>
                 <td class="pr-4">Serviço gratuito de terceiros (<u>não é fonte oficial</u>)</td>
                 <td class="pr-4">Só a busca por CEP: converte o CEP em rua e bairro</td>
@@ -381,7 +382,7 @@ tailwind.config = { theme: { extend: {
 <script src="transacoes.js?v=c1"></script>
 <script src="anuncios.js?v=c1"></script>
 <script src="combo.js?v=c1"></script>
-<script src="mapa.js?v=c1"></script>
+<script src="mapa.js?v=c2"></script>
 <!-- Contador de acessos (GoatCounter): sem cookies, nada visível para o visitante. Painel: https://imobrj.goatcounter.com -->
 <script data-goatcounter="https://imobrj.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
