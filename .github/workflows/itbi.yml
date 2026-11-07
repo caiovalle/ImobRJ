@@ -1,0 +1,96 @@
+name: Atualizar ITBI (planilhas da Fazenda)
+
+# Como usar (detalhes no README, seção "Atualizando os dados"):
+#   1. Baixe no navegador a planilha nova da Fazenda.
+#   2. No GitHub: Releases -> "planilhas" -> Edit (lápis) -> apague o .xlsx antigo do mesmo período,
+#      arraste o novo -> "Update release".
+#   3. Este robô roda sozinho, processa tudo e publica o site. Se não começar em 1 minuto, use
+#      Actions -> "Atualizar ITBI" -> Run workflow.
+# As planilhas ficam como anexos da Release "planilhas" (nunca dentro do repositório).
+on:
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # baixar os anexos da Release e salvar os JSON do site
+  actions: write    # pedir a publicação do site depois
+
+concurrency:
+  group: dados
+  cancel-in-progress: false
+
+env:
+  TAG: planilhas
+
+jobs:
+  atualizar:
+    # Só reage à Release "planilhas"; outras Releases são ignoradas.
+    if: github.event_name == 'workflow_dispatch' || github.event.release.tag_name == 'planilhas'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openpyxl
+
+      # Os scripts procuram as planilhas em ../planilhas_sefaz (ao lado da pasta do projeto), igual ao seu PC.
+      - name: Baixar as planilhas anexadas à Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ../planilhas_sefaz
+          gh release download "$TAG" --pattern '*.xlsx' --dir ../planilhas_sefaz
+          echo "Planilhas baixadas:"
+          ls -la ../planilhas_sefaz
+
+      - name: 1. Juntar e limpar as planilhas
+        run: python scripts/processar_itbi.py
+
+      - name: Relatório de qualidade (aparece no resumo desta execução)
+        if: always()
+        run: |
+          rel=../planilhas_sefaz/saida/relatorio_qualidade.txt
+          if [ -f "$rel" ]; then
+            { echo '### Relatório de qualidade'; echo '```'; cat "$rel"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            cat "$rel"
+          fi
+
+      - name: 2. Gerar dados.json e meta.json
+        run: python scripts/gerar_dados_agregados.py
+
+      - name: 3. Gerar transacoes/ e areas.json
+        run: python scripts/gerar_transacoes_site.py
+
+      - name: 4. Atualizar índices do Banco Central
+        # Se o Banco Central estiver fora do ar, segue com os índices que já estavam no site.
+        continue-on-error: true
+        run: python scripts/atualizar_indices.py
+
+      - name: Salvar no repositório (só se mudou)
+        id: salvar
+        run: |
+          if [ -z "$(git status --porcelain -- public)" ]; then
+            echo "Nada mudou no site."
+            echo "mudou=nao" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public
+          git commit -m "Dados do ITBI atualizados automaticamente ($(date -u +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "mudou=sim" >> "$GITHUB_OUTPUT"
+          git show --stat --oneline HEAD | head -20 >> "$GITHUB_STEP_SUMMARY"
+
+      # Um push feito pelo próprio robô não dispara outros workflows, então pedimos a publicação explicitamente.
+      - name: Publicar o site
+        if: steps.salvar.outputs.mudou == 'sim'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

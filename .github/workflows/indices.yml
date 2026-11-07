@@ -39,7 +39,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/indices.json
           git commit -m "Índices atualizados automaticamente ($(date -u +%Y-%m))"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
           echo "mudou=sim" >> "$GITHUB_OUTPUT"
 
       # Um push feito pelo próprio robô não dispara outros workflows, então pedimos a publicação explicitamente.
