@@ -5,41 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ImobRJ · Quanto vale o m² no Rio?</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script>
 tailwind.config = { theme: { extend: {
-  fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
-  colors: { brand: { 50:'#fff1ef', 100:'#ffe0dc', 500:'#ef4b3f', 600:'#d93a2f', 900:'#7a1d17' }, ink:'#1c2433' }
+  fontFamily: { sans: ['"Work Sans"', 'system-ui', 'sans-serif'], display: ['"DM Serif Display"', 'Georgia', 'serif'] },
+  /* paleta "carioca quente": areia, terracota e verde; cinzas puxados para o quente */
+  colors: { brand: { 50:'#fbede6', 100:'#f6d9cb', 500:'#b4472a', 600:'#a8401f', 900:'#5c2410' }, verde: { 500:'#1f4d3a', 700:'#123226' }, ink:'#2a211a',
+    gray: { 50:'#fbf7f0', 100:'#f3ebdf', 200:'#e3d6c2', 300:'#cdbba2', 400:'#8f7d6a', 500:'#6b5b4b', 600:'#5a4b3d', 700:'#4e4237', 800:'#3a3028', 900:'#2a211a' } }
 }}}
 </script>
 <style>
-  body { background:#f7f5f2 }
-  .card { background:#fff; border:1px solid #ece8e3; border-radius:1.25rem; padding:1.25rem; box-shadow:0 1px 2px rgba(28,36,51,.04) ; min-width:0 }
+  body { background:#f6efe4 }
+  h1, h2, h3 { font-family:"DM Serif Display", Georgia, serif; font-weight:400 !important; letter-spacing:0 !important }
+  h3 { font-size:1.2rem; line-height:1.3 }
+  .onda { display:block; width:100%; height:12px; color:#2a211a }
+  .card { background:#fffbf4; border:1.5px solid #e3d6c2; border-radius:6px; padding:1.25rem; min-width:0 }
   .chart-box { position:relative; height:300px }
-  .tab-btn { padding:.5rem 1rem; border-radius:9999px; font-weight:600; font-size:.875rem; color:#4b5563; white-space:nowrap }
-  .tab-btn:hover { background:#f1ede8 }
-  .tab-btn.active { background:#1c2433; color:#fff }
-  .pill { padding:.4rem .95rem; border-radius:9999px; font-size:.85rem; font-weight:600; border:1px solid #e2ddd6; background:#fff; color:#4b5563 }
-  .pill.on { background:#1c2433; color:#fff; border-color:#1c2433 }
-  .sel { border:1px solid #e2ddd6; border-radius:.75rem; padding:.45rem .7rem; background:#fff; font-size:.85rem; font-weight:500 }
-  .hero-sel { border-radius:.75rem; padding:.55rem .8rem; background:rgba(255,255,255,.95); color:#1c2433; font-size:.875rem; font-weight:500; min-width:12rem; max-width:100% }
-  input, select { outline:none } input:focus, select:focus { box-shadow:0 0 0 3px rgba(239,75,63,.3) }
-  .sug.act { background:#fff1ef }
+  .tab-btn { padding:.5rem .75rem; font-weight:500; font-size:.9rem; color:#2a211a; white-space:nowrap; text-underline-offset:6px; text-decoration-thickness:2px }
+  .tab-btn:hover { text-decoration:underline; text-decoration-color:#cdbba2 }
+  .tab-btn.active { color:#a8401f; font-weight:600; text-decoration:underline; text-decoration-color:currentColor }
+  .pill { padding:.4rem .95rem; border-radius:6px; font-size:.85rem; font-weight:600; border:1.5px solid #cdbba2; background:#fffbf4; color:#4e4237 }
+  .pill.on { background:#1f4d3a; color:#fffbf4; border-color:#1f4d3a }
+  .sel { border:1.5px solid #cdbba2; border-radius:6px; padding:.45rem .7rem; background:#fff; font-size:.85rem; font-weight:500 }
+  .hero-sel { border-radius:6px; padding:.55rem .8rem; background:#fffbf4; color:#2a211a; font-size:.875rem; font-weight:500; min-width:12rem; max-width:100% }
+  input, select { outline:none } input:focus, select:focus { box-shadow:0 0 0 3px rgba(31,77,58,.3) }
+  .sug.act { background:#fbede6 }
   /* início do conteúdo fica logo abaixo do menu fixo; altura mínima evita que abas curtas "puxem" a página de volta ao banner */
   #hero.compacto .hero-big { display:none !important } #hero.compacto { padding-top:1rem; padding-bottom:1rem } #hero.compacto #heroBusca { margin-top:0 }
   #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
-  .sub-btn { padding:.4rem .9rem; border-radius:9999px; font-weight:600; color:#4b5563; white-space:nowrap } .sub-btn:hover { color:#1c2433 } .sub-btn.active { background:#fff; color:#1c2433; box-shadow:0 1px 2px rgba(28,36,51,.12) }
+  .sub-btn { padding:.4rem .9rem; border-radius:4px; font-weight:600; color:#4e4237; white-space:nowrap } .sub-btn:hover { color:#2a211a } .sub-btn.active { background:#1f4d3a; color:#fffbf4 }
   .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
 </head>
 <body class="font-sans text-ink min-h-screen">
 
 <!-- NAV -->
-<header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-[#ece8e3]">
+<header class="sticky top-0 z-40 bg-[#f6efe4]/95 backdrop-blur border-b border-[#e3d6c2]">
+  <svg class="onda" viewBox="0 0 1200 24" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 12 Q 25 0 50 12 T 100 12 T 150 12 T 200 12 T 250 12 T 300 12 T 350 12 T 400 12 T 450 12 T 500 12 T 550 12 T 600 12 T 650 12 T 700 12 T 750 12 T 800 12 T 850 12 T 900 12 T 950 12 T 1000 12 T 1050 12 T 1100 12 T 1150 12 T 1200 12 V 24 H 0 Z"/></svg>
   <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-    <a href="#overview" id="logo" class="shrink-0 flex items-center gap-2 font-extrabold text-xl tracking-tight"><span class="w-8 h-8 rounded-xl bg-brand-500 text-white grid place-items-center text-sm"><i class="fa-solid fa-house-chimney"></i></span>Imob<span class="text-brand-500">RJ</span></a>
+    <a href="#overview" id="logo" class="shrink-0 flex items-center gap-2 font-display text-2xl"><svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="13" r="7" fill="#b4472a"/><path d="M2 26 Q 9 20 16 26 T 30 26" fill="none" stroke="#1f4d3a" stroke-width="3" stroke-linecap="round"/></svg>ImobRJ</a>
     <nav id="tabsNav" class="tabs-nav flex gap-1 overflow-x-auto ml-2 min-w-0">
       <button data-tab="overview" class="tab-btn active">Preços</button>
       <button data-tab="tx" class="tab-btn">Vendas por imóvel</button>
@@ -52,19 +58,19 @@ tailwind.config = { theme: { extend: {
 
 <main class="max-w-7xl mx-auto px-4 pb-16">
   <!-- HERO / BUSCA -->
-  <section id="hero" class="relative z-30 mt-4 rounded-3xl p-5 sm:p-7 text-white" style="background:linear-gradient(135deg,#ef4b3f 0%,#c92f5a 100%)">
+  <section id="hero" class="relative z-30 mt-4 rounded-md p-5 sm:p-7 text-[#fffbf4]" style="background:#b4472a">
     <p class="text-xs sm:text-sm font-semibold opacity-90 mb-1"><i class="fa-solid fa-chart-line mr-1"></i>Dados oficiais de ITBI · Prefeitura do Rio<span id="stamp" class="font-normal opacity-80"></span></p>
-    <h1 class="hero-big text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight max-w-3xl">Quanto vale o m² no seu bairro?</h1>
+    <h1 class="hero-big text-3xl sm:text-5xl leading-tight max-w-3xl">Quanto vale o m² no <em>seu bairro</em>?</h1>
     <p class="hero-big hidden sm:block mt-2 text-sm text-white/90 max-w-2xl">Pesquise por CEP, rua ou bairro e compare preços, volume de vendas e tendência do mercado carioca.</p>
 
     <div id="heroBusca" class="relative z-50 mt-4 max-w-3xl">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
         <input id="search" autocomplete="off" placeholder="Digite um CEP, rua ou bairro…"
-               class="w-full pl-12 pr-32 py-3 rounded-full bg-white text-ink text-base shadow-xl">
-        <button id="btnSearch" class="absolute right-2 top-1/2 -translate-y-1/2 bg-ink hover:bg-black text-white font-semibold px-6 py-2.5 rounded-full">Buscar</button>
+               class="w-full pl-12 pr-32 py-3 rounded-md bg-[#fffbf4] text-ink text-base border-[1.5px] border-ink">
+        <button id="btnSearch" class="absolute right-2 top-1/2 -translate-y-1/2 bg-verde-500 hover:bg-verde-700 text-[#fffbf4] font-semibold px-6 py-2.5 rounded">Buscar</button>
       </div>
-      <div id="suggest" class="hidden absolute left-0 right-0 mt-2 bg-white text-ink border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto" style="z-index:9999"></div>
+      <div id="suggest" class="hidden absolute left-0 right-0 mt-2 bg-[#fffbf4] text-ink border-[1.5px] border-ink rounded-md shadow-xl max-h-80 overflow-y-auto" style="z-index:9999"></div>
     </div>
 
     <div class="hero-big mt-3 flex flex-wrap gap-2 items-center text-sm">
@@ -77,23 +83,23 @@ tailwind.config = { theme: { extend: {
     </div>
     <div id="chips" class="mt-3 flex flex-wrap gap-2 text-xs"></div>
     <div id="atalhos" class="hero-big mt-5 grid sm:grid-cols-3 gap-2 sm:gap-3 text-sm">
-      <button type="button" data-ir="busca" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-magnifying-glass-location mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Quanto vale o m² no meu bairro?</span><span class="block text-xs text-white/80 mt-0.5">Busque acima ou veja a cidade logo abaixo</span></button>
-      <button type="button" data-ir="anuncios" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-tag mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Esse anúncio está caro?</span><span class="block text-xs text-white/80 mt-0.5">Compare o preço pedido com as vendas do prédio, da rua e do bairro</span></button>
-      <button type="button" data-ir="calc" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-scale-balanced mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Vale a pena comprar ou alugar?</span><span class="block text-xs text-white/80 mt-0.5">Simule à vista, financiado ou alugando e investindo</span></button>
+      <button type="button" data-ir="busca" class="text-left rounded-md bg-[#fffbf4] text-ink border-[1.5px] border-ink hover:bg-white p-3 sm:p-4 transition"><i class="fa-solid fa-magnifying-glass-location mb-1.5 text-brand-600"></i><span class="block font-bold leading-snug">Quanto vale o m² no meu bairro?</span><span class="block text-xs text-gray-600 mt-0.5">Busque acima ou veja a cidade logo abaixo</span></button>
+      <button type="button" data-ir="anuncios" class="text-left rounded-md bg-[#fffbf4] text-ink border-[1.5px] border-ink hover:bg-white p-3 sm:p-4 transition"><i class="fa-solid fa-tag mb-1.5 text-brand-600"></i><span class="block font-bold leading-snug">Esse anúncio está caro?</span><span class="block text-xs text-gray-600 mt-0.5">Compare o preço pedido com as vendas do prédio, da rua e do bairro</span></button>
+      <button type="button" data-ir="calc" class="text-left rounded-md bg-[#fffbf4] text-ink border-[1.5px] border-ink hover:bg-white p-3 sm:p-4 transition"><i class="fa-solid fa-scale-balanced mb-1.5 text-brand-600"></i><span class="block font-bold leading-snug">Vale a pena comprar ou alugar?</span><span class="block text-xs text-gray-600 mt-0.5">Simule à vista, financiado ou alugando e investindo</span></button>
     </div>
   </section>
 
   <!-- LOCAL + FILTROS -->
   <section id="conteudo" class="relative z-0 mt-6">
     <!-- sub-abas de Preços: Resumo (overview), Comparar bairros (compare) e Tendência (trend) -->
-    <div id="subPrecos" class="mb-5 inline-flex flex-wrap gap-1 rounded-full bg-[#ece8e3] p-1 text-sm">
+    <div id="subPrecos" class="mb-5 inline-flex flex-wrap gap-1 rounded-md border-[1.5px] border-[#e3d6c2] bg-[#fffbf4] p-1 text-sm">
       <button data-tab="overview" class="sub-btn">Resumo</button>
       <button data-tab="compare" class="sub-btn">Comparar bairros</button>
       <button data-tab="trend" class="sub-btn">Tendência</button>
     </div>
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight"><span id="scopeTitle">Cidade do Rio de Janeiro</span><button type="button" id="btnLimparLocal" class="hidden ml-2 align-middle text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap" aria-label="Voltar para a cidade toda"><i class="fa-solid fa-xmark mr-1"></i>cidade toda</button></h2>
+        <h2 class="text-2xl sm:text-3xl "><span id="scopeTitle">Cidade do Rio de Janeiro</span><button type="button" id="btnLimparLocal" class="hidden ml-2 align-middle text-sm font-semibold text-brand-600 hover:underline whitespace-nowrap" aria-label="Voltar para a cidade toda"><i class="fa-solid fa-xmark mr-1"></i>cidade toda</button></h2>
         <div id="scopeSub" class="text-sm text-gray-500 mt-1"></div>
       </div>
       <div class="flex flex-wrap gap-2 items-center">
@@ -115,7 +121,7 @@ tailwind.config = { theme: { extend: {
       <!-- VISÃO GERAL -->
       <section id="tab-overview" class="tab space-y-6">
         <div id="kpis" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"></div>
-        <p id="kpiAjuda" class="hidden !mt-3 text-xs text-gray-600 bg-[#f6f3ef] rounded-xl p-3 leading-relaxed"></p>
+        <p id="kpiAjuda" class="hidden !mt-3 text-xs text-gray-600 bg-[#f3ebdf] rounded-md p-3 leading-relaxed"></p>
         <div class="grid lg:grid-cols-3 gap-6">
           <div class="card lg:col-span-2"><h3 id="tPreco" class="font-bold mb-3">Preço mediano por m² ao longo do tempo</h3>
             <div id="fxBox" class="flex flex-wrap items-center gap-2 mb-3 text-xs"></div>
@@ -141,8 +147,8 @@ tailwind.config = { theme: { extend: {
           <label class="text-xs text-gray-500">Escala<br><select id="cmpMode" class="sel text-ink"><option value="abs">R$/m² (absoluto)</option><option value="idx">Base 100 (evolução)</option><option value="real">R$/m² em valores de hoje (IPCA)</option></select></label>
           <div class="text-xs text-gray-500">Comparar com<br>
             <span class="flex gap-4 mt-1.5 text-sm text-ink">
-              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpIpca" class="accent-[#ef4b3f]"> IPCA (inflação)</label>
-              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpCdi" class="accent-[#ef4b3f]"> CDI</label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpIpca" class="accent-[#b4472a]"> IPCA (inflação)</label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="cmpCdi" class="accent-[#b4472a]"> CDI</label>
             </span></div>
           <p id="idxNote" class="w-full text-xs text-gray-500"></p>
         </div>
@@ -157,17 +163,17 @@ tailwind.config = { theme: { extend: {
         <div class="card flex flex-wrap items-end gap-x-4 gap-y-2 text-sm">
           <div><label for="tArea" class="text-xs font-semibold text-gray-600">Área do imóvel</label><div class="flex items-center gap-2 mt-1"><input id="tArea" type="number" min="10" step="1" value="70" class="sel w-24 text-right"><span class="text-xs text-gray-500">m²</span></div></div>
           <div class="flex gap-2"><button class="pill tUn on" data-u="m2">R$/m²</button><button class="pill tUn" data-u="imovel">R$ do imóvel</button></div>
-          <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer pb-1.5"><input type="checkbox" id="tFaixa" checked class="accent-[#ef4b3f]"> Só vendas de <b id="tFaixaTxt">65 a 75 m²</b> <span class="text-xs text-gray-500">(área ± 5 m²)</span></label>
+          <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer pb-1.5"><input type="checkbox" id="tFaixa" checked class="accent-[#b4472a]"> Só vendas de <b id="tFaixaTxt">65 a 75 m²</b> <span class="text-xs text-gray-500">(área ± 5 m²)</span></label>
           <div id="tAreaInfo" class="basis-full text-sm"></div>
           <p class="basis-full text-[11px] text-gray-400">A mesma área é usada na aba “Comprar ou alugar”. Com “Só vendas de…” marcado, a linha usa só as vendas com essa área ± 5 m²; desmarcado, usa todas as vendas do local. R$/m² × área é uma <b>estimativa de referência</b>, não uma avaliação: padrão, andar, vista e conservação mudam o preço.</p>
         </div>
         <div id="trendKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
         <div class="card"><div class="flex items-center justify-between gap-2 mb-1"><h3 id="tTrendTit" class="font-bold">Tendência e projeção de preço/m²</h3><button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="hTrend" aria-label="Como ler este gráfico?"><i class="fa-regular fa-circle-question"></i></button></div>
           <p class="text-xs text-gray-500 mb-3">Regressão linear sobre os períodos com dados; projeção de 12 meses. É uma extrapolação estatística, não uma previsão garantida.</p>
-          <p id="hTrend" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mb-3 leading-relaxed"><b>Linha vermelha (R$/m²)</b>: o preço por m² observado em cada período nas transações do ITBI — mediana no bairro e na cidade, média ponderada na rua (poucas vendas). Aqui “real” quer dizer <b>dado observado</b>, em reais da época, sem descontar a inflação. <b>Média móvel (3)</b>: média dos 3 últimos períodos, suaviza oscilações. <b>Tendência linear</b>: a reta que melhor se ajusta aos pontos. <b>Projeção</b>: a mesma reta prolongada por mais 12 meses; é estatística, não previsão nem avaliação profissional.</p>
+          <p id="hTrend" class="hidden text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 mb-3 leading-relaxed"><b>Linha vermelha (R$/m²)</b>: o preço por m² observado em cada período nas transações do ITBI — mediana no bairro e na cidade, média ponderada na rua (poucas vendas). Aqui “real” quer dizer <b>dado observado</b>, em reais da época, sem descontar a inflação. <b>Média móvel (3)</b>: média dos 3 últimos períodos, suaviza oscilações. <b>Tendência linear</b>: a reta que melhor se ajusta aos pontos. <b>Projeção</b>: a mesma reta prolongada por mais 12 meses; é estatística, não previsão nem avaliação profissional.</p>
           <div class="chart-box" style="height:380px"><canvas id="cTrend"></canvas></div></div>
         <div class="card"><div class="flex items-center justify-between gap-2 mb-3"><h3 class="font-bold">Sazonalidade (média de transações por mês)</h3><button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="hSaz" aria-label="Como ler este gráfico?"><i class="fa-regular fa-circle-question"></i></button></div>
-          <p id="hSaz" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mb-3 leading-relaxed">Para cada mês do ano, a média de transações registradas no ITBI nos anos do período selecionado. Mostra em que meses o mercado costuma ter mais ou menos vendas (por exemplo, dezembro e começo de ano). Fala de <b>volume</b>, não de preço.</p>
+          <p id="hSaz" class="hidden text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 mb-3 leading-relaxed">Para cada mês do ano, a média de transações registradas no ITBI nos anos do período selecionado. Mostra em que meses o mercado costuma ter mais ou menos vendas (por exemplo, dezembro e começo de ano). Fala de <b>volume</b>, não de preço.</p>
           <div class="chart-box" style="height:240px"><canvas id="cSaz"></canvas></div></div>
       </section>
 
@@ -185,34 +191,34 @@ tailwind.config = { theme: { extend: {
       <!-- TRANSAÇÕES POR IMÓVEL -->
       <section id="tab-tx" class="tab hidden space-y-6">
         <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Vendas por imóvel</h2>
+          <h2 class="text-2xl sm:text-3xl ">Vendas por imóvel</h2>
           <p class="text-gray-600 mt-2 max-w-3xl">Vendas registradas no ITBI da Prefeitura, uma linha por transação, com rua, número e complemento (apartamento). O valor é o <b>declarado na guia</b>; não é preço anunciado nem avaliação profissional. A fonte informa só mês e ano.</p>
         </div>
         <div id="txControles" class="card space-y-3 text-sm">
           <div class="flex flex-wrap gap-3">
-            <label class="text-xs text-gray-500">Bairro<br><select id="txBairro" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
-            <label class="text-xs text-gray-500">Rua<br><select id="txRua" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white max-w-[16rem]"><option value="">Todas as ruas</option></select></label>
-            <label class="text-xs text-gray-500">Tipo de imóvel<br><select id="txTip" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="">Todos</option></select></label>
-            <label class="text-xs text-gray-500">De<br><select id="txDe" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
-            <label class="text-xs text-gray-500">Até<br><select id="txAte" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"></select></label>
+            <label class="text-xs text-gray-500">Bairro<br><select id="txBairro" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4]"></select></label>
+            <label class="text-xs text-gray-500">Rua<br><select id="txRua" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] max-w-[16rem]"><option value="">Todas as ruas</option></select></label>
+            <label class="text-xs text-gray-500">Tipo de imóvel<br><select id="txTip" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4]"><option value="">Todos</option></select></label>
+            <label class="text-xs text-gray-500">De<br><select id="txDe" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4]"></select></label>
+            <label class="text-xs text-gray-500">Até<br><select id="txAte" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4]"></select></label>
           </div>
           <div class="flex flex-wrap gap-3 items-end">
-            <label class="text-xs text-gray-500">Nº ou apartamento<br><input id="txBusca" type="text" placeholder="ex.: 302 ou 101" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-44"></label>
-            <label class="text-xs text-gray-500">Valor mín. (R$)<br><input id="txVmin" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-32"></label>
-            <label class="text-xs text-gray-500">Valor máx. (R$)<br><input id="txVmax" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-32"></label>
-            <label class="text-xs text-gray-500">Metragem ± 5 m²<br><input id="txArea" type="text" inputmode="numeric" placeholder="ex.: 70" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-24" title="Preenche área mín. e máx. com a metragem ± 5 m²"></label>
-            <label class="text-xs text-gray-500">Área mín. (m²)<br><input id="txAmin" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-24"></label>
-            <label class="text-xs text-gray-500">Área máx. (m²)<br><input id="txAmax" type="text" inputmode="numeric" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink w-24"></label>
-            <label id="txOrdemBox" class="text-xs text-gray-500">Ordenar por<br><select id="txOrdem" class="mt-1 border rounded-lg px-3 py-2 text-sm text-ink bg-white"><option value="data">Mais recentes</option><option value="valor">Maior valor</option><option value="m2">Maior R$/m²</option></select></label>
-            <label class="inline-flex items-center gap-2 pb-2 cursor-pointer"><input type="checkbox" id="txPredio" class="accent-[#ef4b3f]"> Agrupar por prédio (rua + número)</label>
+            <label class="text-xs text-gray-500">Nº ou apartamento<br><input id="txBusca" type="text" placeholder="ex.: 302 ou 101" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-44"></label>
+            <label class="text-xs text-gray-500">Valor mín. (R$)<br><input id="txVmin" type="text" inputmode="numeric" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-32"></label>
+            <label class="text-xs text-gray-500">Valor máx. (R$)<br><input id="txVmax" type="text" inputmode="numeric" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-32"></label>
+            <label class="text-xs text-gray-500">Metragem ± 5 m²<br><input id="txArea" type="text" inputmode="numeric" placeholder="ex.: 70" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-24" title="Preenche área mín. e máx. com a metragem ± 5 m²"></label>
+            <label class="text-xs text-gray-500">Área mín. (m²)<br><input id="txAmin" type="text" inputmode="numeric" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-24"></label>
+            <label class="text-xs text-gray-500">Área máx. (m²)<br><input id="txAmax" type="text" inputmode="numeric" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4] w-24"></label>
+            <label id="txOrdemBox" class="text-xs text-gray-500">Ordenar por<br><select id="txOrdem" class="mt-1 border rounded-md border-[#cdbba2] px-3 py-2 text-sm text-ink bg-[#fffbf4]"><option value="data">Mais recentes</option><option value="valor">Maior valor</option><option value="m2">Maior R$/m²</option></select></label>
+            <label class="inline-flex items-center gap-2 pb-2 cursor-pointer"><input type="checkbox" id="txPredio" class="accent-[#b4472a]"> Agrupar por prédio (rua + número)</label>
           </div>
         </div>
         <div id="txKpis" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
         <div id="txConteudo"></div>
         <div id="txPagina" class="hidden flex items-center justify-center gap-4 text-sm">
-          <button id="txPrev" class="border rounded-full px-4 py-1.5 bg-white disabled:opacity-40">Anterior</button>
+          <button id="txPrev" class="border-[1.5px] border-ink rounded-md px-4 py-1.5 bg-[#fffbf4] disabled:opacity-40">Anterior</button>
           <span id="txPageInfo" class="text-gray-500"></span>
-          <button id="txNext" class="border rounded-full px-4 py-1.5 bg-white disabled:opacity-40">Próxima</button>
+          <button id="txNext" class="border-[1.5px] border-ink rounded-md px-4 py-1.5 bg-[#fffbf4] disabled:opacity-40">Próxima</button>
         </div>
         <p class="text-xs text-gray-500">Estatísticas (mediana e percentis) usam só vendas integrais com R$/m² plausível; vendas parciais e valores atípicos aparecem na lista, marcados. A fonte não distingue o tipo de transação (compra e venda, cessão etc.). Detalhes em “Sobre os dados”.</p>
       </section>
@@ -220,7 +226,7 @@ tailwind.config = { theme: { extend: {
       <!-- DADOS E METODOLOGIA -->
       <section id="tab-method" class="tab hidden space-y-6">
         <div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Sobre os dados</h2>
+          <h2 class="text-2xl sm:text-3xl ">Sobre os dados</h2>
           <p class="text-gray-600 mt-2 max-w-3xl">De onde vêm os números, como são tratados e o que eles <b>não</b> dizem. A qualidade deste painel depende da transparência sobre isso.</p>
         </div>
 
@@ -328,7 +334,7 @@ tailwind.config = { theme: { extend: {
   </section>
 </main>
 
-<footer class="border-t border-[#ece8e3] bg-white/60">
+<footer class="border-t border-[#e3d6c2] bg-[#f3ebdf]">
   <div class="max-w-7xl mx-auto px-4 py-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
     <span class="font-semibold text-ink">Imob<span class="text-brand-500">RJ</span></span>
     <button type="button" data-tab="method" class="foot-link hover:text-brand-600 hover:underline"><i class="fa-solid fa-circle-info mr-1"></i>Sobre os dados e a metodologia</button>
@@ -338,12 +344,12 @@ tailwind.config = { theme: { extend: {
 </footer>
 
 <!-- Carregamento manual do JSON (caso abra via file://) -->
-<div id="loader" class="fixed inset-0 z-[10000] bg-white flex items-center justify-center">
+<div id="loader" class="fixed inset-0 z-[10000] bg-[#f6efe4] flex items-center justify-center">
   <div class="text-center max-w-md p-6">
     <i class="fa-solid fa-spinner fa-spin text-3xl text-brand-500 mb-4" id="loadIcon"></i>
     <p id="loadMsg" class="text-gray-600">Carregando dados…</p>
     <div id="manual" class="hidden mt-4">
-      <button type="button" onclick="location.reload()" class="bg-ink hover:bg-black text-white font-semibold px-5 py-2 rounded-full text-sm"><i class="fa-solid fa-rotate-right mr-1"></i>Recarregar a página</button>
+      <button type="button" onclick="location.reload()" class="bg-verde-500 hover:bg-verde-700 text-white font-semibold px-5 py-2 rounded text-sm"><i class="fa-solid fa-rotate-right mr-1"></i>Recarregar a página</button>
       <details class="mt-5 text-left text-xs text-gray-500"><summary class="cursor-pointer">Para quem mantém o site</summary>
         <p class="mt-2 mb-2">Abrindo o HTML direto do disco, o navegador bloqueia o <b>dados.json</b>. Rode um servidor local (<code>python -m http.server</code> na pasta public) ou selecione o arquivo:</p>
         <input type="file" id="file" accept=".json" class="text-sm"></details>
@@ -351,10 +357,10 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=ab5"></script>
-<script src="calc.js?v=ab5"></script>
-<script src="transacoes.js?v=ab5"></script>
-<script src="anuncios.js?v=ab5"></script>
-<script src="combo.js?v=ab5"></script>
+<script src="app.js?v=c1"></script>
+<script src="calc.js?v=c1"></script>
+<script src="transacoes.js?v=c1"></script>
+<script src="anuncios.js?v=c1"></script>
+<script src="combo.js?v=c1"></script>
 </body>
 </html>

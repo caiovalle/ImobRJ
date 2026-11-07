@@ -13,6 +13,7 @@ const STOP = new Set(['de', 'da', 'do', 'dos', 'das', 'e']);
 const normRua = s => { const t = strip(s).split(' '); t[0] = ABREV[t[0]] || t[0];
   return t.map((w, i) => i ? (TITULOS[w] || w) : w).filter((w, i) => !i || !STOP.has(w)).join(' '); };
 const pretty = s => { const t = s.trim().split(/\s+/); const f = ABREV[strip(t[0])]; if (f) t[0] = f[0].toUpperCase() + f.slice(1); return t.join(' '); };
+if (window.Chart) { Chart.defaults.font.family = '"Work Sans", system-ui, sans-serif'; Chart.defaults.color = '#5a4b3d'; Chart.defaults.borderColor = 'rgba(42,33,26,.08)'; }
 const $ = id => document.getElementById(id);
 const brl = v => v == null ? '—' : v.toLocaleString('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:0 });
 const num = v => v == null ? '—' : Math.round(v).toLocaleString('pt-BR');
@@ -24,7 +25,7 @@ const areaGet = () => { let a = NaN; try { a = +localStorage.getItem(AREA_K); } 
 const areaSet = a => { a = +a; if (!(a >= 10)) return; areaGet.mem = a; try { localStorage.setItem(AREA_K, String(a)); } catch (e) {} };
 const ANO0 = 2010;   // mês t=0 é jan/2010; a base por imóvel começa em jul/2011
 const minmax = (arr, f = x => x) => { let a = Infinity, b = -Infinity; for (const x of arr) { const v = f(x); if (v < a) a = v; if (v > b) b = v; } return [a, b]; };   // seguro p/ centenas de milhares de itens (Math.max(...lista) estoura)
-const COLORS = ['#ef4b3f', '#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#94a3b8'];
+const COLORS = ['#b4472a', '#1f4d3a', '#2f6f8f', '#f59e0b', '#8b5cf6', '#94a3b8'];
 
 // ---------- Estado ----------
 let ROWS = [], RUAS = [], BAIRROS = [];
@@ -323,7 +324,7 @@ function renderOverview(sc) {
   let te = Object.entries(tm).sort((x, y) => y[1] - x[1]); const rest = te.slice(6).reduce((s, x) => s + x[1], 0);
   te = te.slice(0, 6); if (rest) te.push(['Outros', rest]);
   const totTip = te.reduce((s, x) => s + x[1], 0) || 1;
-  mk('cTip', { type: 'bar', data: { labels: te.map(x => x[0]), datasets: [{ data: te.map(x => x[1] / totTip * 100), backgroundColor: '#1e3a5f', borderRadius: 6 }] },
+  mk('cTip', { type: 'bar', data: { labels: te.map(x => x[0]), datasets: [{ data: te.map(x => x[1] / totTip * 100), backgroundColor: '#1f4d3a', borderRadius: 6 }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${pct1(c.parsed.x)} · ${num(te[c.dataIndex][1])} transações` } } },
       scales: { x: { ticks: { callback: v => v + '%' } } } } });
 
@@ -333,7 +334,7 @@ function renderOverview(sc) {
     const m0 = ano === ANO0 + Math.floor(tIni / 12) ? tIni % 12 + 1 : 1, m1 = ano === ANO0 + Math.floor(tFim / 12) ? tFim % 12 + 1 : 12;
     return m0 > 1 || m1 < 12 ? [m0, m1] : null; };
   const anos = Object.keys(am).map(Number), parc = anos.map(parcial);
-  mk('cAno', { type: 'bar', data: { labels: anos.map((a, i) => parc[i] ? a + '*' : String(a)), datasets: [{ label: 'Transações', data: anos.map(a => am[a]), backgroundColor: parc.map(p => p ? '#a5b4c8' : '#1e3a5f'), borderRadius: 6 }] },
+  mk('cAno', { type: 'bar', data: { labels: anos.map((a, i) => parc[i] ? a + '*' : String(a)), datasets: [{ label: 'Transações', data: anos.map(a => am[a]), backgroundColor: parc.map(p => p ? '#a5b4c8' : '#1f4d3a'), borderRadius: 6 }] },
     options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${num(c.parsed.y)} transações` + (parc[c.dataIndex] ? ` (só ${MESES[parc[c.dataIndex][0] - 1]}–${MESES[parc[c.dataIndex][1] - 1]})` : '') } } } } });
   const nParc = anos.map((a, i) => parc[i] ? `${a} (só ${MESES[parc[i][0] - 1].toLowerCase()} a ${MESES[parc[i][1] - 1].toLowerCase()})` : null).filter(Boolean);
   $('anoNota').textContent = nParc.length ? `* Ano incompleto na base: ${nParc.join('; ')}. A barra é menor por isso, não por queda nas vendas.` : '';
@@ -347,7 +348,7 @@ const pct1 = v => v.toFixed(1).replace('.', ',') + '%';
 
 // ---------- Visão geral: gráfico do R$/m² com uma linha por faixa de metragem ----------
 const FX_K = 'imobrj_faixas', FX_MAX = 8;
-const FX_CORES = ['#1e3a5f', '#14b8a6', '#f59e0b', '#8b5cf6', '#0ea5e9', '#db2777', '#65a30d', '#78716c'];
+const FX_CORES = ['#1f4d3a', '#2f6f8f', '#f59e0b', '#8b5cf6', '#0ea5e9', '#db2777', '#65a30d', '#78716c'];
 let FX = (() => {
   try { const j = JSON.parse(localStorage.getItem(FX_K)); if (j && Array.isArray(j.lista)) return { todas: j.todas !== false, lista: j.lista.filter(f => f.c >= 10).slice(0, FX_MAX) }; } catch (e) {}
   return { todas: true, lista: [{ c: 50, on: true }, { c: 70, on: true }, { c: 100, on: true }, { c: 150, on: false }] };
@@ -363,7 +364,7 @@ function fxAdicionar() {
   $('fxNova').value = ''; fxSalvar(); render();
 }
 function renderFaixasBox() {
-  const chip = (on, cor, txt, attrs, del = '') => `<span class="inline-flex items-center rounded-full border ${on ? 'bg-white border-gray-300 text-ink' : 'bg-gray-50 border-gray-200 text-gray-400'}">
+  const chip = (on, cor, txt, attrs, del = '') => `<span class="inline-flex items-center rounded-full border ${on ? 'bg-[#fffbf4] border-gray-300 text-ink' : 'bg-gray-50 border-gray-200 text-gray-400'}">
     <button type="button" ${attrs} class="inline-flex items-center gap-1.5 pl-2.5 ${del ? 'pr-1' : 'pr-2.5'} py-1 font-semibold" aria-pressed="${on}">
       <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${on ? cor : '#d1d5db'}"></span>${txt}</button>${del}</span>`;
   $('fxBox').innerHTML = `<span class="text-gray-500 mr-1">Mostrar:</span>` +
@@ -379,7 +380,7 @@ function renderPrecoFaixas(sc, md, lastT) {
   const axis = makeAxis(B), labels = axis.map(keyLabel), ativas = FX.lista.map((f, i) => ({ ...f, i })).filter(f => f.on);
   const todas = FX.todas || !ativas.length, ds = [];
   if (todas) { const s = series(sc, axis, md); ds.push(lineDs(md ? 'Todas as metragens (mediana)' : 'Todas as metragens (média)', s.map(p => p?.m2 ?? null), COLORS[0],
-    ativas.length ? { borderWidth: 2.5, _n: s.map(p => p?.n ?? null) } : { fill: true, backgroundColor: 'rgba(239,75,63,.10)', _n: s.map(p => p?.n ?? null) })); }
+    ativas.length ? { borderWidth: 2.5, _n: s.map(p => p?.n ?? null) } : { fill: true, backgroundColor: 'rgba(180,71,42,.10)', _n: s.map(p => p?.n ?? null) })); }
   const gs = ativas.length ? areasEscopo() : null, carregando = ativas.length && !gs && AREAS_ST !== 'erro';
   const resumo = [];
   if (gs) {
@@ -416,7 +417,7 @@ function renderRank() {
     .sort((a, b) => b[metric] - a[metric]).slice(0, 10);
   $('rankTitle').textContent = `Top 10 ${porBairro ? 'bairros' : 'ruas do bairro'} por ${metric === 'm2' ? (mdB ? 'preço/m² (mediana)' : 'preço/m² (média)') : 'volume'}`;
   $('rankNota').textContent = metric === 'm2' ? `Só entram ${porBairro ? 'bairros' : 'ruas'} com ${minN} ou mais vendas no período escolhido, para evitar preços de amostras muito pequenas.` : '';
-  mk('cRank', { type: 'bar', data: { labels: items.map(i => i.name), datasets: [{ data: items.map(i => metric === 'm2' ? i.m2 : i.n), backgroundColor: '#ef4b3f', borderRadius: 6 }] },
+  mk('cRank', { type: 'bar', data: { labels: items.map(i => i.name), datasets: [{ data: items.map(i => metric === 'm2' ? i.m2 : i.n), backgroundColor: '#b4472a', borderRadius: 6 }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: metric === 'm2' ? yBRL : {} } } });
 }
 
@@ -568,7 +569,7 @@ function renderTrend(sc) {
   const k = (id, l, v, c = '', sub = '') => `<div class="card"><div class="flex items-start justify-between gap-1 text-xs text-gray-500 mb-1"><span>${l}</span>
       <button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="${id}" aria-label="O que é ${l}?"><i class="fa-regular fa-circle-question"></i></button></div>
       <div class="text-xl font-bold ${c}">${v}</div>${sub ? `<div class="text-[11px] text-gray-500 mt-1 leading-snug">${sub}</div>` : ''}
-      <p id="${id}" class="${TREND_HELP.has(id) ? '' : 'hidden'} text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed">${TREND_AJUDA[id]}</p></div>`;
+      <p id="${id}" class="${TREND_HELP.has(id) ? '' : 'hidden'} text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 mt-2 leading-relaxed">${TREND_AJUDA[id]}</p></div>`;
   const projLbl = keyLabel(ext.at(-1));
   $('trendKpis').innerHTML = k('hDir', 'Direção', `<i class="fa-solid ${dir[2]} mr-1"></i>${dir[0]}`, dir[1], `${med ? 'mediana' : 'média'} do R$/m²${fx ? ` · ${faixaTxt(area)}` : ''}`) +
     k('hVar', 'Variação anual estimada', pct(annual) + ' a.a.', pctColor(annual), varSub) +
@@ -581,7 +582,7 @@ function renderTrend(sc) {
   const nomeSerie = (med ? 'R$/m² (mediana' : 'R$/m² (média') + (fx ? `, ${faixaTxt(area)})` : ')') + (un ? ` × ${num(area)} m²` : '');
   mk('cTrend', { type: 'line', data: { labels, datasets: [
     lineDs(nomeSerie, [...y, ...ext.map(() => null)].map(mult), COLORS[0], { pointRadius: 2 }),
-    lineDs('Média móvel (3)', [...movAvg(y), ...ext.map(() => null)].map(mult), '#14b8a6', { borderWidth: 1.5 }),
+    lineDs('Média móvel (3)', [...movAvg(y), ...ext.map(() => null)].map(mult), '#2f6f8f', { borderWidth: 1.5 }),
     lineDs('Tendência linear', line.slice(0, last + 1).concat(ext.map(() => null)).map(mult), '#64748b', { borderDash: [4, 4], borderWidth: 1.5 }),
     lineDs('Projeção', proje.map(mult), '#f59e0b', { borderDash: [8, 4] })] },
     options: { interaction: { mode: 'index', intersect: false }, scales: { y: yBRL } } });
@@ -589,7 +590,7 @@ function renderTrend(sc) {
 
   const sm = Array(12).fill(0), yrs = Array.from({ length: 12 }, () => new Set());
   sc.forEach(r => { sm[r.mes - 1] += r.transacoes; yrs[r.mes - 1].add(r.ano); });
-  mk('cSaz', { type: 'bar', data: { labels: MESES, datasets: [{ label: 'Média de transações', data: sm.map((v, i) => v / (yrs[i].size || 1)), backgroundColor: '#14b8a6', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } } } });
+  mk('cSaz', { type: 'bar', data: { labels: MESES, datasets: [{ label: 'Média de transações', data: sm.map((v, i) => v / (yrs[i].size || 1)), backgroundColor: '#2f6f8f', borderRadius: 6 }] }, options: { plugins: { legend: { display: false } } } });
 }
 
 // ---------- Busca, CEP (ViaCEP) e autocomplete ----------

@@ -71,7 +71,7 @@ function anMontar() {
       <label for="anLink" class="text-xs font-semibold text-gray-600">Link do anúncio</label>
       <div class="mt-1 flex flex-col sm:flex-row gap-2">
         <input id="anLink" type="url" autocomplete="off" placeholder="https://www.zapimoveis.com.br/imovel/…" class="sel w-full">
-        <button id="anLer" class="bg-ink hover:bg-black text-white font-semibold px-5 py-2 rounded-full whitespace-nowrap"><i class="fa-solid fa-link mr-1"></i>Ler link</button>
+        <button id="anLer" class="bg-verde-500 hover:bg-verde-700 text-white font-semibold px-5 py-2 rounded whitespace-nowrap"><i class="fa-solid fa-link mr-1"></i>Ler link</button>
         <button id="anNovo" class="pill whitespace-nowrap"><i class="fa-solid fa-eraser mr-1"></i>Limpar</button>
       </div>
       <p id="anLinkInfo" class="text-xs text-gray-500 mt-2">O site não abre a página do portal: usa só o texto do link. Sem link? Preencha os campos abaixo direto.</p>
@@ -266,7 +266,7 @@ function anAvaliar() {
       ${y > refY * 1.15 ? 'O aluguel pedido está <b class="text-red-600">acima</b> dessa referência para o preço do imóvel: comprar tende a compensar mais.' : y < refY * 0.85 ? 'O aluguel pedido está <b class="text-emerald-600">abaixo</b> dessa referência para o preço do imóvel: alugar tende a compensar.' : 'O aluguel pedido está <b>perto</b> dessa referência.'} Confira com outros anúncios de aluguel parecidos no bairro.`;
   }
   AN.ult = res;
-  const linhas = cam.C.map(c => `<tr class="border-b last:border-0 ${c === ref ? 'bg-[#f6f3ef] font-semibold' : ''}"><td class="py-2 pr-3">${esc(c.nome)}${c === ref ? ' <span class="text-[11px] text-brand-600">referência</span>' : ''}</td>
+  const linhas = cam.C.map(c => `<tr class="border-b last:border-0 ${c === ref ? 'bg-[#f3ebdf] font-semibold' : ''}"><td class="py-2 pr-3">${esc(c.nome)}${c === ref ? ' <span class="text-[11px] text-brand-600">referência</span>' : ''}</td>
     <td class="pr-3">${num(c.n)}${c.n && c.n < c.min ? ' <span class="text-[11px] text-amber-700">poucas</span>' : ''}</td><td class="pr-3">${c.n ? brl(c.med) : '—'}</td><td class="pr-3 whitespace-nowrap">${c.n ? brl(c.p25) + ' – ' + brl(c.p75) : '—'}</td>
     <td>${c.n && !alug ? `<span class="${m2 > c.p75 ? 'text-red-600' : m2 < c.p25 ? 'text-emerald-600' : ''}">${anPctTxt((m2 / c.med - 1) * 100)}</span>` : '—'}</td></tr>`).join('');
   const salvoTxt = AN.editId ? 'Atualizar salvo' : 'Salvar para comparar';
@@ -274,7 +274,7 @@ function anAvaliar() {
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div><div class="text-xs text-gray-500">${alug ? 'Rentabilidade do aluguel' : 'Preço do anúncio vs. vendas'}</div><div class="text-3xl font-extrabold ${cor}">${destaque}</div></div>
       <div class="flex flex-wrap gap-2">
-        <button data-an="simular" class="bg-brand-500 hover:bg-brand-600 text-white font-semibold px-4 py-2 rounded-full text-sm"><i class="fa-solid fa-calculator mr-1"></i>Simular comprar x alugar</button>
+        <button data-an="simular" class="bg-brand-500 hover:bg-brand-600 text-white font-semibold px-4 py-2 rounded text-sm"><i class="fa-solid fa-calculator mr-1"></i>Simular comprar x alugar</button>
         <button data-an="salvar" class="pill"><i class="fa-regular fa-bookmark mr-1"></i>${salvoTxt}</button>
       </div>
     </div>
@@ -334,7 +334,7 @@ function anRenderLista() {
     const alug = a.op === 'aluguel', mensal = (a.cond || 0) + (a.iptuMes || 0);
     const titulo = `${tipoNome(a.tipo)}${a.quartos != null ? `, ${a.quartos} qto${a.quartos === 1 ? '' : 's'}` : ''} · ${esc(a.bairro)}`;
     const vs = alug ? (a.yield != null ? `${a.yield.toFixed(1).replace('.', ',')}% a.a.` : '—') : (a.dif != null ? `<span class="${a.dif > 0 ? 'text-red-600' : 'text-emerald-600'}">${anPctTxt(a.dif)}</span>${a.dif === melhor ? ' <span class="text-[11px] text-emerald-700">melhor</span>' : ''}` : '—');
-    return `<tr class="border-b last:border-0 ${a.id === AN.editId ? 'bg-[#f6f3ef]' : ''}">
+    return `<tr class="border-b last:border-0 ${a.id === AN.editId ? 'bg-[#f3ebdf]' : ''}">
       <td class="py-2 pr-3"><div class="font-semibold">${titulo}</div><div class="text-xs text-gray-500">${esc(a.rua || 'rua não informada')}${a.numero ? ', ' + esc(a.numero) : ''}${a.url ? ` · <a href="${esc(a.url)}" target="_blank" rel="noopener" class="text-brand-600 hover:underline">${esc(a.portal || 'link')} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div></td>
       <td class="pr-3 whitespace-nowrap">${alug ? 'Aluguel' : 'Venda'}</td>
       <td class="pr-3 whitespace-nowrap">${brl(a.preco)}${alug ? '/mês' : ''}</td>
