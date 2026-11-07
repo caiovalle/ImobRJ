@@ -34,11 +34,19 @@ let TAB = 'overview', B = [];                                                   
 const charts = {};
 
 // ---------- Carregamento ----------
+// lê a resposta mostrando quantos MB já chegaram (o arquivo é grande; no celular pode levar alguns segundos)
+async function lerComProgresso(r) {
+  if (!r.body?.getReader) return r.text();
+  const rd = r.body.getReader(), dec = new TextDecoder(), partes = []; let n = 0;
+  for (;;) { const { done, value } = await rd.read(); if (done) break; n += value.length; partes.push(dec.decode(value, { stream: true }));
+    $('loadMsg').textContent = `Carregando as vendas do ITBI… ${(n / 1e6).toFixed(1).replace('.', ',')} MB`; }
+  partes.push(dec.decode()); return partes.join('');
+}
 async function init() {
   try {
     const r = await fetch('dados.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error(r.status);
-    start(expandir(await r.json()));
+    start(expandir(JSON.parse(await lerComProgresso(r))));
   } catch (e) {
     $('loadIcon').classList.add('hidden'); $('loadMsg').textContent = 'Não foi possível carregar os dados. Verifique a internet e tente de novo.';
     $('manual').classList.remove('hidden');
@@ -92,7 +100,6 @@ function start(raw) {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   bindEvents(); paintPills(); renderChips(); TAB = abaDoEndereco(); lerLocalDoEndereco(); syncSelects(); marcarAba(); render();
   loadIndices().finally(() => { renderMethodAuto(); if (TAB !== 'history') render(); });
-  loadMedianas().then(() => { if (MED && TAB !== 'history') render(); });
   loadAreas().then(() => { if (AREAS && TAB !== 'history') render(); });
 }
 
@@ -100,23 +107,12 @@ function start(raw) {
 const baseRows = () => ROWS.filter(r => (!F.tipo || r.tipo === F.tipo) && (!F.tip || r.tipologia === F.tip) && r.ano >= F.de && r.ano <= F.ate);
 const inScope = (rows, sc = S) => sc.lvl === 'cidade' ? rows : rows.filter(r => r.nb === sc.nb && (sc.lvl === 'bairro' || r.nl === sc.nl));
 
-// ---------- Mediana do R$/m² (medianas.json: R$/m² de cada transação, por bairro/tipologia/tipo/mês) ----------
+// ---------- Mediana do R$/m² (vem do areas.json: R$/m² de cada transação, por bairro/tipologia/tipo/mês) ----------
 // Bairro e cidade usam MEDIANA real; rua usa MÉDIA ponderada (poucas vendas e o arquivo não tem a rua).
-// Sem medianas.json, o site continua funcionando só com médias.
+// Enquanto o areas.json não chega (ou se faltar), o site funciona só com médias.
 let MED = null, MB = [];          // MED = todos os grupos; MB = grupos após os filtros atuais (atualizado em render)
 const MED_MIN = 5;
 const POUCOS = 50;                // abaixo disso, o local ganha aviso de "poucos dados"                // mínimo de transações para mostrar uma mediana
-async function loadMedianas() {
-  try {
-    const r = await fetch('medianas.json', { cache: 'no-cache' }); if (!r.ok) return;
-    const j = await r.json(), nbs = j.bairros.map(b => strip(b.trim())), passo = j.passo || 10;
-    MED = j.grupos.map(g => {
-      const v = new Int32Array(g.length - 5); let acc = 0;
-      for (let i = 5; i < g.length; i++) { acc += g[i]; v[i - 5] = acc; }   // desfaz as diferenças (lista já vem ordenada)
-      return { nb: nbs[g[0]], tipologia: j.tipologias[g[1]], tipo: g[2] ? 'Comercial' : 'Residencial', ano: g[3], t: (g[3] - ANO0) * 12 + g[4] - 1, v, passo };
-    });
-  } catch (e) { MED = null; }
-}
 const medBase = () => MED ? MED.filter(g => (!F.tipo || g.tipo === F.tipo) && (!F.tip || g.tipologia === F.tip) && g.ano >= F.de && g.ano <= F.ate) : [];
 // grupos de mediana do local: cidade = todos; bairro = só o bairro; rua = null (usa média)
 const medScope = (sc = S) => !MED || sc.lvl === 'rua' ? null : sc.lvl === 'cidade' ? MB : MB.filter(g => g.nb === sc.nb);
@@ -147,8 +143,10 @@ async function loadAreas() {
       const a = new Int32Array(g[5].length); let acc = 0; g[5].forEach((d, i) => { acc += d; a[i] = acc; });
       return { nb: j.nbs[g[0]], tipologia: j.tipologias[g[1]], tipo: g[2] ? 'Comercial' : 'Residencial', ano: g[3], t: (g[3] - ANO0) * 12 + g[4] - 1, a, v: Int32Array.from(g[6]), passo };
     });
+    // as medianas usam os mesmos grupos, com os R$/m² em ordem crescente (antes vinham de um medianas.json separado, com o mesmo conteúdo)
+    MED = AREAS.map(g => ({ nb: g.nb, tipologia: g.tipologia, tipo: g.tipo, ano: g.ano, t: g.t, v: Int32Array.from(g.v).sort(), passo: g.passo }));
     AREAS_ST = 'ok';
-  } catch (e) { AREAS = null; AREAS_ST = 'erro'; }
+  } catch (e) { AREAS = null; MED = null; AREAS_ST = 'erro'; }
 }
 const areasFiltro = gs => gs.filter(g => (!F.tipo || g.tipo === F.tipo) && (!F.tip || g.tipologia === F.tip) && g.ano >= F.de && g.ano <= F.ate);
 // grupos do local atual; null enquanto carrega (rua: lê o arquivo do bairro e chama render() quando chegar)
@@ -713,6 +711,8 @@ function bindEvents() {
   document.addEventListener('click', e => { if (!e.target.closest('#search, #suggest')) $('suggest').classList.add('hidden'); });
   $('btnCidade').onclick = () => { S = { lvl: 'cidade', label: 'Cidade do Rio de Janeiro' }; F.gran = 1; $('fGran').value = 1; syncSelects(); gravarEndereco(); render(); };
   $('btnLimparLocal').onclick = () => $('btnCidade').click();
+  $('atalhos').addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (!b) return;   // porta de entrada da Visão geral
+    if (b.dataset.ir === 'busca') { $('search').focus(); $('search').scrollIntoView({ block: 'center', behavior: 'smooth' }); } else irParaAba(b.dataset.ir); });
 
   const bind = (id, fn) => $(id).addEventListener('change', () => { fn($(id).value); render(); });
   bind('fTip', v => F.tip = v);

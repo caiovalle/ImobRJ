@@ -79,6 +79,11 @@ tailwind.config = { theme: { extend: {
       <select id="selRua" class="hero-sel" disabled><option value="">Rua…</option></select>
     </div>
     <div id="chips" class="mt-3 flex flex-wrap gap-2 text-xs"></div>
+    <div id="atalhos" class="hero-big mt-5 grid sm:grid-cols-3 gap-2 sm:gap-3 text-sm">
+      <button type="button" data-ir="busca" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-magnifying-glass-location mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Quanto vale o m² no meu bairro?</span><span class="block text-xs text-white/80 mt-0.5">Busque acima ou veja a cidade logo abaixo</span></button>
+      <button type="button" data-ir="anuncios" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-tag mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Esse anúncio está caro?</span><span class="block text-xs text-white/80 mt-0.5">Compare o preço pedido com as vendas do prédio, da rua e do bairro</span></button>
+      <button type="button" data-ir="calc" class="text-left rounded-2xl bg-white/15 hover:bg-white/25 p-3 sm:p-4 transition"><i class="fa-solid fa-scale-balanced mb-1.5 opacity-90"></i><span class="block font-bold leading-snug">Vale a pena comprar ou alugar?</span><span class="block text-xs text-white/80 mt-0.5">Simule à vista, financiado ou alugando e investindo</span></button>
+    </div>
   </section>
 
   <!-- LOCAL + FILTROS -->
@@ -334,10 +339,10 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=pf1"></script>
-<script src="calc.js?v=pf1"></script>
-<script src="transacoes.js?v=pf1"></script>
-<script src="anuncios.js?v=pf1"></script>
-<script src="combo.js?v=pf1"></script>
+<script src="app.js?v=pf2"></script>
+<script src="calc.js?v=pf2"></script>
+<script src="transacoes.js?v=pf2"></script>
+<script src="anuncios.js?v=pf2"></script>
+<script src="combo.js?v=pf2"></script>
 </body>
 </html>
