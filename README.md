@@ -2,7 +2,7 @@
 
 Dashboard estático (HTML + JS, sem build) com as transações de **ITBI da Prefeitura do Rio**, comparação com IPCA e CDI
 (Banco Central), aba de tendência e calculadora **comprar × alugar**. Publicado no **GitHub Pages**:
-https://caiovalle.github.io/ImobRJ/
+https://imobrj.github.io/
 
 ```
 C:\Projetos\ITBI Git\
