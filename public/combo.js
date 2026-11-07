@@ -19,8 +19,8 @@
     input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-expanded', 'false');
     const lista = document.createElement('ul');
     lista.id = sel.id + '-lista'; lista.setAttribute('role', 'listbox'); input.setAttribute('aria-controls', lista.id);
-    lista.className = 'hidden absolute z-50 left-0 top-full mt-1 min-w-full w-max max-w-[22rem] max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg py-1 text-sm text-left';
-    lista.style.color = '#1c2433'; lista.style.fontWeight = '500';
+    lista.className = 'hidden absolute z-50 left-0 top-full mt-1 min-w-full w-max max-w-[22rem] max-h-64 overflow-y-auto bg-[#fffbf4] border-[1.5px] border-gray-300 rounded-md shadow-lg py-1 text-sm text-left';
+    lista.style.color = '#2a211a'; lista.style.fontWeight = '500';
     if (sel.dataset.w === '100%') wrap.className = 'combo relative block w-full';
     sel.style.display = 'none'; sel.after(wrap); wrap.append(input, lista);
     const rotulo = (sel.closest('label')?.firstChild?.textContent || '').trim();

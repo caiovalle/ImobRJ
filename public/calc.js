@@ -91,8 +91,8 @@ function calcMontar() {
         <button type="button" class="cHelp text-gray-400 hover:text-brand-600" data-for="${id}" aria-label="O que é ${rot}?"><i class="fa-regular fa-circle-question"></i></button></div>
       <div class="mt-1 flex items-center gap-2"><input id="${id}" type="${moeda ? 'text' : 'number'}" inputmode="${moeda ? 'numeric' : 'decimal'}" ${moeda ? 'data-money="1"' : `step="${passo}" min="0"`} class="sel w-full text-right"><span class="text-xs text-gray-500 whitespace-nowrap w-20">${un}</span></div>
       <p id="${id}Sug" class="text-[11px] text-gray-400 mt-0.5"></p>
-      <p id="${id}Help" class="hidden text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 mt-1 leading-relaxed">${ajuda}</p></div>`; }; 
-  const chk = (id, txt, on = true) => `<label class="sm:col-span-2 flex items-center gap-2 text-xs text-gray-700"><input id="${id}" type="checkbox" ${on ? 'checked' : ''} class="accent-[#ef4b3f]">${txt}</label>`;
+      <p id="${id}Help" class="hidden text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 mt-1 leading-relaxed">${ajuda}</p></div>`; }; 
+  const chk = (id, txt, on = true) => `<label class="sm:col-span-2 flex items-center gap-2 text-xs text-gray-700"><input id="${id}" type="checkbox" ${on ? 'checked' : ''} class="accent-[#b4472a]">${txt}</label>`;
   const grupo = (tit, ids, extra = '') => `<div class="card"><h3 class="font-bold mb-3">${tit}</h3><div class="grid sm:grid-cols-2 gap-4">${CALC_CAMPOS.filter(c => ids.includes(c[0])).map(campo).join('')}${extra}</div></div>`;
   $('tab-calc').innerHTML = `
     <div>
@@ -117,7 +117,7 @@ function calcMontar() {
       <div class="grid lg:grid-cols-2 gap-6 mt-4">
       ${grupo('Seu dinheiro', ['cFgts', 'cOrcamento'])}
       ${grupo('Imóvel e compra', ['cItbi', 'cCartorio', 'cValoriz', 'cManut'])}
-      ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f6f3ef] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
+      ${grupo('Financiamento', ['cEntrada', 'cPrazo', 'cJuros', 'cTR', 'cSeguros', 'cTarifa', 'cAmortAnual'], `<div class="sm:col-span-2"><label for="cAmortFonte" class="text-xs font-semibold text-gray-600">Origem da amortização</label><select id="cAmortFonte" class="sel w-full mt-1"><option value="renda">Renda extra anual (13º, bônus ou PLR) — recomendado</option><option value="orcamento">Parte do orçamento mensal</option><option value="carteira">Retirada dos investimentos</option></select><p id="cAmortFonteInfo" class="text-xs text-gray-500 bg-[#f3ebdf] rounded-lg p-2 mt-2 leading-relaxed"></p></div>` + chk('cFinOpc', 'Mesmo tendo o dinheiro para comprar à vista, comparar também financiando (e investindo o resto)', false))}
       <div class="card self-start"><h3 class="font-bold mb-2">Cenário de juros futuros</h3><p class="text-xs text-gray-500 mb-3">Atalhos para o rendimento dos investimentos. São cenários, não previsões; não alteram os juros do financiamento.</p><div class="flex flex-wrap gap-2"><button class="pill cPerfil" data-nom="16">Conservador · juros altos (16%)</button><button class="pill cPerfil" id="cPerfilSelic" data-nom="13.75">Estável · Selic atual (13,75%)</button><button class="pill cPerfil" data-nom="9">Otimista · juros menores (9%)</button></div><p id="cPerfilInfo" class="text-[11px] text-gray-400 mt-2">O botão converte a taxa nominal escolhida em rendimento real acima do IPCA.</p></div>
       ${grupo('Aluguel', ['cReajAluguel'], `<div class="sm:col-span-2"><label for="cAlugPct" class="text-xs font-semibold text-gray-600">Ou informe o aluguel em % do valor do imóvel</label><div class="mt-1 flex items-center gap-2"><input id="cAlugPct" type="number" inputmode="decimal" step="0.1" min="0" class="sel w-28 text-right"><span class="text-xs text-gray-500">% a.a. do valor</span></div><p class="text-[11px] text-gray-400 mt-0.5">Converte para R$/mês no campo “Aluguel inicial” (e vice-versa).</p></div>` + chk('cAlugVal', 'Aluguel acompanha a valorização do imóvel (recomendado)'))}
       ${grupo('Investimento', ['cRendReal', 'cIR', 'cIpca'])}
@@ -126,7 +126,7 @@ function calcMontar() {
         <button class="pill cSis on" data-s="sac">SAC</button><button class="pill cSis" data-s="price">Price</button>
         <button type="button" class="cHelp text-gray-400 hover:text-brand-600" data-for="cSis" aria-label="SAC ou Price?"><i class="fa-regular fa-circle-question"></i></button>
         <button id="cReset" class="ml-auto text-xs text-brand-600 hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i>Voltar às sugestões</button>
-        <p id="cSisHelp" class="hidden basis-full text-xs text-gray-600 bg-[#f6f3ef] rounded-lg p-2 leading-relaxed"><b>SAC</b>: a amortização é igual todo mês, então a parcela começa mais alta e cai com o tempo; paga menos juros no total. <b>Price</b>: parcela fixa (antes da TR), começa menor que no SAC, mas o saldo cai mais devagar e o total de juros é maior.</p>
+        <p id="cSisHelp" class="hidden basis-full text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 leading-relaxed"><b>SAC</b>: a amortização é igual todo mês, então a parcela começa mais alta e cai com o tempo; paga menos juros no total. <b>Price</b>: parcela fixa (antes da TR), começa menor que no SAC, mas o saldo cai mais devagar e o total de juros é maior.</p>
       </div>
       </div>
     </details>
@@ -427,7 +427,7 @@ function calcSensibilidade(p, r0) {
   const reais = SENS_EXP ? faixa(-4, 6) : [-2, -1, 0, 1, 2, 3];
   const rends = SENS_EXP ? faixa(-1, Math.max(12, Math.ceil(p.rendReal + 2)))
     : [p.rendReal - 3, p.rendReal - 2, p.rendReal - 1, p.rendReal, p.rendReal + 1, p.rendReal + 2].filter(x => x >= -1);
-  const cores = { a: '#1e3a5f', b: '#ef4b3f', c: '#14b8a6' }, nomes = { a: 'À vista', b: 'Financ.', c: 'Alugar' };
+  const cores = { a: '#1f4d3a', b: '#b4472a', c: '#2f6f8f' }, nomes = { a: 'À vista', b: 'Financ.', c: 'Alugar' };
   const valReal = ((1 + p.valoriz / 100) / (1 + p.ipca / 100) - 1) * 100;
   const maisPerto = (lst, v) => lst.reduce((m, x) => Math.abs(x - v) < Math.abs(m - v) ? x : m, lst[0]);
   const rrAtual = maisPerto(rends, p.rendReal), vrAtual = maisPerto(reais, valReal);   // célula mais próxima da premissa atual
@@ -445,8 +445,8 @@ function calcSensibilidade(p, r0) {
       ${linha('Valorização do imóvel (nominal)', 'valoriz', p.ipca - 6, p.ipca + 12)}
       ${linha('Aluguel (% do valor do imóvel por ano)', 'aluguel', p.V * 0.01 / 12, p.V * 0.15 / 12, yld)}
     </ul>
-    <div class="overflow-x-auto"><table class="text-xs ${SENS_EXP ? 'min-w-[640px]' : 'min-w-[460px]'}"><thead><tr><th class="sticky left-0 z-10 bg-white text-left pr-2 font-normal text-gray-500 leading-tight whitespace-nowrap">Rend. real ↓<br>Valoriz. real →</th>${reais.map(v => `<th class="px-1 font-semibold min-w-[44px]">${v > 0 ? '+' : ''}${v}%</th>`).join('')}</tr></thead><tbody>
-      ${rends.map(rr => `<tr><th class="sticky left-0 z-10 bg-white text-left pr-2 font-semibold">${pc(rr)}</th>${reais.map(vr => cel(rr, vr)).join('')}</tr>`).join('')}
+    <div class="overflow-x-auto"><table class="text-xs ${SENS_EXP ? 'min-w-[640px]' : 'min-w-[460px]'}"><thead><tr><th class="sticky left-0 z-10 bg-[#fffbf4] text-left pr-2 font-normal text-gray-500 leading-tight whitespace-nowrap">Rend. real ↓<br>Valoriz. real →</th>${reais.map(v => `<th class="px-1 font-semibold min-w-[44px]">${v > 0 ? '+' : ''}${v}%</th>`).join('')}</tr></thead><tbody>
+      ${rends.map(rr => `<tr><th class="sticky left-0 z-10 bg-[#fffbf4] text-left pr-2 font-semibold">${pc(rr)}</th>${reais.map(vr => cel(rr, vr)).join('')}</tr>`).join('')}
     </tbody></table></div>
     <p class="text-[11px] text-gray-500 mt-2"><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.a}"></span>À vista · <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.b}"></span>Financ. · <span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:${cores.c}"></span>Alugar. Cada célula mostra o caminho com maior patrimônio (entre os que se aplicam ao seu dinheiro). Valorização real = acima do IPCA (0% = imóvel acompanha a inflação). A célula com contorno é ${exata ? 'a premissa atual' : `a mais próxima da premissa atual (rendimento real ${pc(p.rendReal)}, valorização real ${pc(valReal)})`}.${SENS_EXP ? '' : ' Use “Expandir matriz” para ver mais combinações.'}</p>`;
 }
@@ -504,7 +504,7 @@ function cenRender() {
   for (const id of [...CMP_SEL]) if (!l.some(c => c.id === id)) CMP_SEL.delete(id);
   if (!CMP_SEL.size) l.slice(-CMP_MAX).forEach(c => CMP_SEL.add(c.id));
   $('cenLista').innerHTML = l.length ? l.map(c => `<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 border-b last:border-0">
-      <input type="checkbox" class="cenSel accent-[#ef4b3f]" data-id="${c.id}" ${CMP_SEL.has(c.id) ? 'checked' : ''} aria-label="Comparar ${c.nome}">
+      <input type="checkbox" class="cenSel accent-[#b4472a]" data-id="${c.id}" ${CMP_SEL.has(c.id) ? 'checked' : ''} aria-label="Comparar ${c.nome}">
       <span class="font-semibold">${c.nome}</span><span class="text-xs text-gray-500 truncate">${c.bairroNome && c.bairro ? c.bairroNome + ' · ' : ''}${brl(valorEstado(c, 'cValor'))} · ${c.criado}</span>
       <button class="cenLoad ml-auto text-xs text-brand-600 hover:underline whitespace-nowrap" data-id="${c.id}"><i class="fa-solid fa-upload mr-1"></i>Carregar</button>
       <button class="cenDel text-xs text-gray-400 hover:text-red-600" data-id="${c.id}" aria-label="Apagar ${c.nome}"><i class="fa-solid fa-trash"></i></button></div>`).join('')
@@ -534,7 +534,7 @@ function cenComparar() {
   box.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-sm min-w-[520px]">
     <thead><tr class="border-b"><th class="text-left py-2"></th>${rs.map(x => `<th class="text-right px-2">${x.c.nome}</th>`).join('')}</tr></thead><tbody>
     <tr><td colspan="${rs.length + 1}" class="pt-3 pb-1 text-xs font-bold uppercase text-gray-500">Resultado (valores de hoje)</td></tr>
-    ${linhaRes('Melhor opção', x => { const k = x.r.melhor; return `<span class="rounded-full px-2 py-0.5 text-white text-xs" style="background:${{ a: '#1e3a5f', b: '#ef4b3f', c: '#14b8a6' }[k]}">${nomes[k]}</span>`; })}
+    ${linhaRes('Melhor opção', x => { const k = x.r.melhor; return `<span class="rounded-full px-2 py-0.5 text-white text-xs" style="background:${{ a: '#1f4d3a', b: '#b4472a', c: '#2f6f8f' }[k]}">${nomes[k]}</span>`; })}
     ${linhaRes('Comprar à vista', x => val(x, 'a'))}
     ${linhaRes('Comprar financiado', x => val(x, 'b'))}
     ${linhaRes('Alugar e investir', x => val(x, 'c'))}
@@ -548,13 +548,13 @@ function cenComparar() {
     ${prem.map(linhaPrem).join('')}
     </tbody></table></div>
     <p class="text-xs text-gray-500 mt-2">${mudou.length ? 'Diferenças entre os cenários: ' + mudou.map(m => m[0].toLowerCase()).join(', ') + '.' : 'Os cenários têm as mesmas premissas.'} Comparar o patrimônio entre cenários com <b>valores de imóvel ou dinheiro inicial diferentes</b> não indica qual é “melhor”: compare principalmente a melhor opção dentro de cada um.</p>`;
-  const cores = ['#1e3a5f', '#ef4b3f', '#14b8a6', '#f59e0b'];
+  const cores = ['#1f4d3a', '#b4472a', '#2f6f8f', '#f59e0b'];
   mk('cCenChart', { type: 'bar', data: { labels: ['À vista', 'Financiado', 'Alugar e investir'],
       datasets: rs.map((x, i) => ({ label: x.c.nome, data: ['a', 'b', 'c'].map(k => x.r.validos.includes(k) ? x.r.res[k].hoje : null), backgroundColor: cores[i], borderRadius: 6 })) },
     options: { scales: { y: yBRL }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${brl(c.parsed.y)}` } } } } });
 }
 
-const CEN_INFO = { a: ['Comprar à vista', '#1e3a5f', 'fa-sack-dollar'], b: ['Comprar financiado', '#ef4b3f', 'fa-building-columns'], c: ['Alugar e investir', '#14b8a6', 'fa-key'] };
+const CEN_INFO = { a: ['Comprar à vista', '#1f4d3a', 'fa-sack-dollar'], b: ['Comprar financiado', '#b4472a', 'fa-building-columns'], c: ['Alugar e investir', '#2f6f8f', 'fa-key'] };
 
 function calcRodar() {
   if (!CALC_OK) return;
@@ -593,7 +593,7 @@ function calcRodar() {
       ${av.join('')}<p class="text-[11px] text-gray-400 mt-1">Todo mês, cada caminho tem o mesmo ${orcTxt}; o que sobra é investido.</p></div>
     <div class="grid sm:grid-cols-${cen.length} gap-4">${cen.map(card).join('')}</div>
     ${(() => { const cf = r.compraFinal, ok = cf.sobra >= 0;
-      return `<div class="card text-sm"><p class="text-xs text-gray-500 mb-1"><i class="fa-solid fa-house-circle-check mr-1" style="color:#14b8a6"></i>Se você alugar e investir por ${num(p.horiz)} anos e comprar a mesma casa à vista no fim</p>
+      return `<div class="card text-sm"><p class="text-xs text-gray-500 mb-1"><i class="fa-solid fa-house-circle-check mr-1" style="color:#2f6f8f"></i>Se você alugar e investir por ${num(p.horiz)} anos e comprar a mesma casa à vista no fim</p>
         <p>Ao final de ${num(p.horiz)} anos, o patrimônio de quem alugou (<b>${brl(cf.patr)}</b>) ${ok ? 'compra' : 'não compra'} a mesma casa à vista (<b>${brl(cf.preco)}</b> + ${brl(cf.custos)} de ITBI e cartório)${ok ? ' e ' : ': '}<b class="${ok ? 'text-emerald-700' : 'text-red-600'}">${ok ? 'sobram' : 'faltam'} ${brl(Math.abs(cf.sobra))}</b> (${brl(Math.abs(cf.sobraHoje))} em valores de hoje).</p>
         <p class="text-[11px] text-gray-400 mt-1">Valores nominais do ano ${num(p.horiz)}. O preço da casa usa a valorização informada (${f2(p.valoriz)}% a.a.; em valores de hoje, ${brl(cf.precoHoje)}); na compra entram ITBI e cartório, sem corretagem.</p></div>`; })()}`;
   mk('cCalcChart', { type: 'line', data: { labels: r.serie.anos.map(a => a + 'a'), datasets: cen.map(([k, nome, cor]) => lineDs(nome + (inviavel(k) ? ' (falta dinheiro)' : ''), r.serie[k], cor, { borderWidth: 2.5, borderDash: inviavel(k) ? [6, 4] : undefined })) },
