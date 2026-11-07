@@ -94,12 +94,13 @@ tailwind.config = { theme: { extend: {
 
   <!-- LOCAL + FILTROS -->
   <section id="conteudo" class="relative z-0 mt-6">
-    <!-- sub-abas de Preços: Resumo (overview), Comparar bairros (compare) e Tendência (trend) -->
+    <!-- sub-abas de Preços: Resumo (overview), Comparar bairros (compare), Tendência (trend), Mapa (mapa) e Rankings (ranking) -->
     <div id="subPrecos" class="mb-5 inline-flex flex-wrap gap-1 rounded-md border-[1.5px] border-[#e3d6c2] bg-[#fffbf4] p-1 text-sm">
       <button data-tab="overview" class="sub-btn">Resumo</button>
       <button data-tab="compare" class="sub-btn">Comparar bairros</button>
       <button data-tab="trend" class="sub-btn">Tendência</button>
       <button data-tab="mapa" class="sub-btn"><i class="fa-solid fa-map-location-dot mr-1"></i>Mapa</button>
+      <button data-tab="ranking" class="sub-btn"><i class="fa-solid fa-ranking-star mr-1"></i>Rankings</button>
     </div>
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -184,13 +185,17 @@ tailwind.config = { theme: { extend: {
       <!-- MAPA (montado por mapa.js) -->
       <section id="tab-mapa" class="tab hidden space-y-6">
         <div class="card">
-          <h3 class="font-bold">Preço do m² por bairro</h3>
+          <div class="flex flex-wrap items-center justify-between gap-2"><h3 id="mapaTit" class="font-bold">Preço do m² por bairro</h3>
+            <div class="flex gap-2"><button type="button" class="pill mapa-modo on" data-m="preco">Preço do m²</button><button type="button" class="pill mapa-modo" data-m="var">Valorização em 12 meses</button></div></div>
           <p id="mapaInfo" class="text-sm text-gray-600 mt-1"></p>
           <div id="mapaBox" class="mt-3 rounded-md border-[1.5px] border-[#e3d6c2]" style="height:clamp(300px,55vw,560px);background:#f3ebdf"></div>
           <div id="mapaLegenda" class="mt-3"></div>
-          <p class="text-[11px] text-gray-400 mt-2">Cada bairro mostra a <b>mediana</b> do R$/m² das vendas registradas no ITBI nos últimos 12 meses com dados (até o mês do filtro “Até”), seguindo os botões Residencial/Comercial e o tipo de imóvel. As cores dividem os bairros com preço em grupos de tamanho parecido. Bairros com menos de 10 vendas ficam sem cor. Toque ou clique num bairro para ver os números e abrir o bairro. Limites dos bairros: Instituto Pereira Passos (Data.Rio).</p>
+          <p class="text-[11px] text-gray-400 mt-2">Cada bairro mostra a <b>mediana</b> do R$/m² das vendas registradas no ITBI nos últimos 12 meses com dados (até o mês do filtro “Até”), seguindo os botões Residencial/Comercial e o tipo de imóvel. As cores dividem os bairros com preço em grupos de tamanho parecido. Bairros com menos de 10 vendas ficam sem cor. Toque ou clique num bairro para ver os números e abrir o bairro. <b>Valorização em 12 meses</b>: variação da mediana do R$/m² dos últimos 12 meses com dados contra os 12 meses anteriores, só de imóveis residenciais (ou só apartamentos, se esse tipo estiver escolhido), sem seguir os filtros De/Até; cada prédio conta no máximo 5 vendas por período, para um prédio novo com muitas vendas não parecer valorização. Bairros com menos de 30 vendas em um dos períodos ficam sem cor. Limites dos bairros: Instituto Pereira Passos (Data.Rio).</p>
         </div>
       </section>
+
+      <!-- RANKINGS (montado por ranking.js) -->
+      <section id="tab-ranking" class="tab hidden space-y-6"></section>
 
       <!-- AVALIAR ANÚNCIO e COMPRAR OU ALUGAR (montadas por anuncios.js e calc.js) -->
       <section id="tab-anuncios" class="tab hidden space-y-6"></section>
@@ -250,6 +255,8 @@ tailwind.config = { theme: { extend: {
             <li><b>Preços → Resumo:</b> preço do m², volume e tipos de imóvel do local escolhido (cidade, bairro ou rua), com linhas por faixa de metragem.</li>
             <li><b>Preços → Comparar bairros:</b> o local escolhido contra a cidade e outros bairros, em R$/m², em base 100 ou descontando a inflação, e contra IPCA e CDI.</li>
             <li><b>Preços → Tendência:</b> reta de tendência do preço, projeção de 12 meses e meses do ano com mais vendas.</li>
+            <li><b>Preços → Mapa:</b> os bairros pintados pelo preço do m² ou pela valorização em 12 meses.</li>
+            <li><b>Preços → Rankings:</b> bairros onde o m² mais subiu e mais caiu, bairros mais caros e mais baratos e ruas mais caras, com botão para copiar a lista.</li>
             <li><b>Vendas por imóvel:</b> cada venda registrada, com rua, número e apartamento, e os prédios com mais vendas.</li>
             <li><b>Avaliar anúncio:</b> você informa o anúncio (link e preço) e o site compara com as vendas do prédio, da rua e do bairro.</li>
             <li><b>Comprar ou alugar:</b> simulação do patrimônio comprando à vista, financiando ou alugando e investindo.</li>
@@ -377,12 +384,13 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=c2"></script>
+<script src="app.js?v=c3"></script>
 <script src="calc.js?v=c1"></script>
 <script src="transacoes.js?v=c1"></script>
 <script src="anuncios.js?v=c1"></script>
 <script src="combo.js?v=c1"></script>
-<script src="mapa.js?v=c2"></script>
+<script src="ranking.js?v=c1"></script>
+<script src="mapa.js?v=c3"></script>
 <!-- Contador de acessos (GoatCounter): sem cookies, nada visível para o visitante. Painel: https://imobrj.goatcounter.com -->
 <script data-goatcounter="https://imobrj.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
