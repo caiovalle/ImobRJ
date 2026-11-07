@@ -286,9 +286,9 @@ function render() {
   B = baseRows(); MB = medBase();
   const sc = inScope(B);
   const has = sc.length > 0;
-  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';   // abas que não dependem de local/filtros
+  const solo = TAB === 'history' || TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios' || TAB === 'ranking';   // abas que não dependem de local/filtros
   $('empty').classList.toggle('hidden', has || solo);
-  const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios';
+  const semBarra = TAB === 'method' || TAB === 'tx' || TAB === 'calc' || TAB === 'anuncios' || TAB === 'ranking';
   // banner grande só em Preços → Resumo; Comparar bairros e Tendência ficam com a busca compacta; nas demais abas ele some
   $('hero').classList.toggle('hidden', semBarra || TAB === 'history'); $('hero').classList.toggle('compacto', TAB !== 'overview');
   $('btnLimparLocal').classList.toggle('hidden', S.lvl === 'cidade');
@@ -300,6 +300,7 @@ function render() {
   if (TAB === 'tx') return renderTx();
   if (TAB === 'calc') return renderCalc();
   if (TAB === 'anuncios') return renderAnuncios();
+  if (TAB === 'ranking') return renderRanking();
   if (!has) return;
   $('scopeSub').innerHTML = `${num(sc.length)} registros · ${F.de}–${F.ate}` + (S.cep ? ` · <span class="text-brand-600 font-medium">CEP ${S.cep}</span>` : '') + (S.ceps?.length ? ' · CEPs: ' + S.ceps.map(c => `<span class="bg-brand-100 text-brand-900 rounded px-1.5 py-0.5 text-xs">${c}</span>`).join(' ') : '');
   const nTot = sc.reduce((s, r) => s + r.transacoes, 0);
@@ -778,7 +779,7 @@ function renderMethodAuto() {
 function syncFilters() { paintPills(); $('fTip').value = F.tip; $('fDe').value = F.de; $('fAte').value = F.ate; $('fGran').value = F.gran; }
 
 // ---------- Abas: endereço próprio (#aba) e rolagem até o início do conteúdo ----------
-const ABAS = ['overview', 'compare', 'trend', 'mapa', 'tx', 'anuncios', 'calc', 'history', 'method'];
+const ABAS = ['overview', 'compare', 'trend', 'mapa', 'ranking', 'tx', 'anuncios', 'calc', 'history', 'method'];
 // endereço: #aba ou #aba/bairro ou #aba/bairro/rua (ex.: #trend/tijuca/rua-conde-bonfim), para compartilhar o link de um local
 const abaDoEndereco = () => { const a = location.hash.slice(1).split('/')[0]; return ABAS.includes(a) ? a : 'overview'; };
 const slugLocal = s => s.replace(/ /g, '-');
@@ -799,8 +800,8 @@ function localDeAba(nb) {
   S = { lvl: 'bairro', nb: b.nb, label: 'Bairro ' + b.nome }; F.gran = 1; $('fGran').value = 1;
   addHistory(); syncSelects(); gravarEndereco();
 }
-// o menu tem 4 abas: "Preços" reúne Resumo (overview), Comparar bairros (compare), Tendência (trend) e Mapa (mapa), escolhidos nas sub-abas
-const PRECOS = ['overview', 'compare', 'trend', 'mapa'];
+// o menu tem 4 abas: "Preços" reúne Resumo (overview), Comparar bairros (compare), Tendência (trend), Mapa (mapa) e Rankings (ranking), escolhidos nas sub-abas
+const PRECOS = ['overview', 'compare', 'trend', 'mapa', 'ranking'];
 let PRECO_ULT = 'overview';           // última sub-aba de Preços (o botão "Preços" volta para ela)
 function marcarAba() {
   if (PRECOS.includes(TAB)) PRECO_ULT = TAB;
