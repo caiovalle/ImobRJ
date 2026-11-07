@@ -36,6 +36,8 @@ tailwind.config = { theme: { extend: {
   #hero.compacto .hero-big { display:none !important } #hero.compacto { padding-top:1rem; padding-bottom:1rem } #hero.compacto #heroBusca { margin-top:0 }
   #conteudo { scroll-margin-top:4.5rem; min-height:calc(100vh - 4.5rem); min-height:calc(100dvh - 4.5rem) }
   .sub-btn { padding:.4rem .9rem; border-radius:4px; font-weight:600; color:#4e4237; white-space:nowrap } .sub-btn:hover { color:#2a211a } .sub-btn.active { background:#1f4d3a; color:#fffbf4 }
+  .mapa-tip, .mapa-pop .leaflet-popup-content { font-family:"Work Sans", system-ui, sans-serif; font-size:.8rem; line-height:1.4; color:#2a211a }
+  .leaflet-container { font-family:"Work Sans", system-ui, sans-serif }
   .tabs-nav { scrollbar-width:none } .tabs-nav::-webkit-scrollbar { display:none }
 </style>
 </head>
@@ -96,6 +98,7 @@ tailwind.config = { theme: { extend: {
       <button data-tab="overview" class="sub-btn">Resumo</button>
       <button data-tab="compare" class="sub-btn">Comparar bairros</button>
       <button data-tab="trend" class="sub-btn">Tendência</button>
+      <button data-tab="mapa" class="sub-btn"><i class="fa-solid fa-map-location-dot mr-1"></i>Mapa</button>
     </div>
     <div id="scopeHead" class="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -175,6 +178,17 @@ tailwind.config = { theme: { extend: {
         <div class="card"><div class="flex items-center justify-between gap-2 mb-3"><h3 class="font-bold">Sazonalidade (média de transações por mês)</h3><button type="button" class="tHelp text-gray-400 hover:text-brand-600" data-for="hSaz" aria-label="Como ler este gráfico?"><i class="fa-regular fa-circle-question"></i></button></div>
           <p id="hSaz" class="hidden text-xs text-gray-600 bg-[#f3ebdf] rounded-lg p-2 mb-3 leading-relaxed">Para cada mês do ano, a média de transações registradas no ITBI nos anos do período selecionado. Mostra em que meses o mercado costuma ter mais ou menos vendas (por exemplo, dezembro e começo de ano). Fala de <b>volume</b>, não de preço.</p>
           <div class="chart-box" style="height:240px"><canvas id="cSaz"></canvas></div></div>
+      </section>
+
+      <!-- MAPA (montado por mapa.js) -->
+      <section id="tab-mapa" class="tab hidden space-y-6">
+        <div class="card">
+          <h3 class="font-bold">Preço do m² por bairro</h3>
+          <p id="mapaInfo" class="text-sm text-gray-600 mt-1"></p>
+          <div id="mapaBox" class="mt-3 rounded-md border-[1.5px] border-[#e3d6c2]" style="height:clamp(300px,55vw,560px);background:#f3ebdf"></div>
+          <div id="mapaLegenda" class="mt-3"></div>
+          <p class="text-[11px] text-gray-400 mt-2">Cada bairro mostra a <b>mediana</b> do R$/m² das vendas registradas no ITBI nos últimos 12 meses com dados (até o mês do filtro “Até”), seguindo os botões Residencial/Comercial e o tipo de imóvel. As cores dividem os bairros com preço em grupos de tamanho parecido. Bairros com menos de 10 vendas ficam sem cor. Toque ou clique num bairro para ver os números e abrir o bairro. Limites dos bairros: Instituto Pereira Passos (Data.Rio).</p>
+        </div>
       </section>
 
       <!-- AVALIAR ANÚNCIO e COMPRAR OU ALUGAR (montadas por anuncios.js e calc.js) -->
@@ -277,6 +291,10 @@ tailwind.config = { theme: { extend: {
                 <td class="pr-4">FipeZAP (rentabilidade do aluguel), Caixa (juros do financiamento), Tesouro Direto (IPCA+)</td>
                 <td class="pr-4">Só as sugestões iniciais de “Comprar ou alugar” e a comparação de aluguel em “Avaliar anúncio”</td>
                 <td>Digitadas à mão no código, com a data da consulta ao lado de cada sugestão. Precisam ser revisadas de tempos em tempos.</td></tr>
+              <tr><td class="py-3 pr-4 font-medium">Limite de Bairros (sub-aba Mapa)</td>
+                <td class="pr-4">Prefeitura do Rio, Instituto Pereira Passos (IPP)</td>
+                <td class="pr-4">Contorno dos 166 bairros oficiais no mapa de preços</td>
+                <td><a class="text-brand-600 hover:underline" href="https://www.data.rio/" target="_blank" rel="noopener">Data.Rio</a>. Contornos simplificados para o site ficar leve (precisão de dezenas de metros). Fundo do mapa: <a class="text-brand-600 hover:underline" href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> sobre dados do OpenStreetMap; biblioteca Leaflet. Vila Kennedy, Gericinó, Grumari, Cidade Universitária e Argentino não aparecem como bairro nas planilhas do ITBI (as vendas de lá vêm dentro de bairros vizinhos), por isso ficam sem cor.</td></tr>
               <tr><td class="py-3 pr-4 font-medium">ViaCEP</td>
                 <td class="pr-4">Serviço gratuito de terceiros (<u>não é fonte oficial</u>)</td>
                 <td class="pr-4">Só a busca por CEP: converte o CEP em rua e bairro</td>
@@ -358,11 +376,12 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<script src="app.js?v=c1"></script>
+<script src="app.js?v=c2"></script>
 <script src="calc.js?v=c1"></script>
 <script src="transacoes.js?v=c1"></script>
 <script src="anuncios.js?v=c1"></script>
 <script src="combo.js?v=c1"></script>
+<script src="mapa.js?v=c1"></script>
 <!-- Contador de acessos (GoatCounter): sem cookies, nada visível para o visitante. Painel: https://imobrj.goatcounter.com -->
 <script data-goatcounter="https://imobrj.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>

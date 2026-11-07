@@ -8,7 +8,8 @@ https://imobrj.github.io/
 C:\Projetos\ITBI Git\
 ├─ ImobRJ\                        <- este repositório (branch main)
 │  ├─ public\                     <- site publicado
-│  │  ├─ index.html, app.js, calc.js, transacoes.js, anuncios.js, combo.js
+│  │  ├─ index.html, app.js, calc.js, transacoes.js, anuncios.js, combo.js, mapa.js
+│  │  ├─ bairros.geojson          <- contornos dos bairros para a sub-aba Mapa (IPP/Data.Rio, simplificados)
 │  │  ├─ dados.json, meta.json    <- agregados por rua/mês (gerar_dados_agregados.py)
 │  │  ├─ indices.json             <- IPCA, CDI, TR e Selic (atualizar_indices.py)
 │  │  ├─ areas.json               <- área e R$/m² de cada venda: faixas de metragem e medianas (gerar_areas.py)
@@ -71,6 +72,12 @@ python -m http.server 8000                # abra http://localhost:8000 (ou http:
 ```
 
 ## Detalhes úteis
+- **Mapa (Preços → Mapa):** pinta cada bairro pela mediana do R$/m² dos últimos 12 meses (mín. 10 vendas), calculada no navegador
+  a partir do `areas.json`. O `mapa.js` só baixa a biblioteca Leaflet (cdnjs) e o `bairros.geojson` quando alguém abre o mapa.
+  O `bairros.geojson` veio da camada "Limite de Bairros" do IPP/Data.Rio (166 bairros, nov/2026), convertida para lat/long e
+  simplificada com o mapshaper (`-proj wgs84 -simplify 5% keep-shapes -clean`, precisão 0,0001°). Cada bairro tem `nome` (oficial) e
+  `nb` (o nome sem acento usado nos dados do ITBI; "Brás de Pina" → `braz de pina` e "Osvaldo Cruz" → `oswaldo cruz`).
+  Só precisa ser refeito se a Prefeitura criar ou mudar bairros.
 - A primeira planilha da Fazenda começa em **2011-07**; o último mês publicado costuma atrasar.
 - Bairro e cidade usam a **mediana** do R$/m²; rua usa média ponderada (poucas vendas). As medianas vêm do `areas.json`; enquanto ele carrega (ou se faltar), o site mostra médias.
 - Se `indices.json` não existir, o site tenta ler o Banco Central direto do navegador; se falhar, os recursos de IPCA/CDI ficam desativados.
