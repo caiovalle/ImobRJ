@@ -32,7 +32,7 @@ const CALC_CAMPOS = [
   // id, rótulo, unidade, passo, ajuda
   ['cDinheiro', 'Seu dinheiro hoje', 'R$', 1000, 'Quanto você tem disponível hoje para a moradia (sem contar o FGTS). Define os caminhos comparados: se dá para comprar à vista (imóvel + ITBI + cartório), compara <b>à vista × alugar e investir esse dinheiro</b>; se não dá, compara <b>financiar × alugar e investir</b>. O que sobrar é investido.'],
   ['cOrcamento', 'Orçamento mensal para moradia', 'R$/mês', 100, 'Quanto você pode gastar por mês com parcela, manutenção ou aluguel (corrigido pela inflação ao longo do tempo). O que sobra é investido; se um gasto passar do orçamento, a diferença sai dos investimentos e a calculadora avisa. <b>Deixe vazio</b> para usar o maior gasto entre os caminhos (todos gastam o mesmo e investem a diferença).'],
-  ['cValor', 'Valor do imóvel', 'R$', 1000, 'Preço de compra. O botão acima estima pela <b>mediana do R$/m²</b> do bairro (vendas dos últimos 12 meses no ITBI) × a área.'],
+  ['cValor', 'Valor do imóvel', 'R$', 1000, 'Preço de compra. O botão acima estima pela <b>mediana do R$/m²</b> do bairro (vendas dos últimos 12 meses no ITBI) com área parecida (área ± 5 m²; se houver poucas, todas as metragens) × a área.'],
   ['cItbi', 'ITBI', '%', 0.1, '<b>ITBI</b>: imposto municipal pago na compra. No Rio a alíquota é 3% sobre o valor da transação, pago antes da escritura.'],
   ['cCartorio', 'Escritura e registro', '%', 0.1, 'Custos de cartório (escritura e registro no RGI). Varia com o valor; cerca de 1% é uma estimativa. No 1º imóvel financiado pelo SFH há desconto de 50% no registro.'],
   ['cValoriz', 'Valorização do imóvel', '% a.a.', 0.1, 'Quanto o imóvel sobe por ano, em R$ correntes. A sugestão é a inflação (valorização real zero). Ao lado aparece a variação histórica da mediana do bairro nos dados do ImobRJ.'],
@@ -79,7 +79,10 @@ function calcBairroInfo(nb) {
   let t0 = Infinity, t1 = -Infinity; for (const g of gs) { if (g.t < t0) t0 = g.t; if (g.t > t1) t1 = g.t; }
   const fim = medOf(gs.filter(g => g.t > t1 - 12)), ini = medOf(gs.filter(g => g.t < t0 + 12));
   const anos = (t1 - t0 - 11) / 12;
-  return { m2: fim?.m2 ?? null, n: fim?.n ?? 0, ate: ymLabel(t1), desde: ymLabel(t0),
+  // mesma conta só com as vendas na faixa da área (área ± 5 m²), se houver ao menos MED_MIN
+  const area = +$('cArea')?.value, [lo, hi] = faixaDe(area >= 10 ? area : areaGet());
+  const fx = AREAS ? medFaixa(AREAS.filter(g => g.nb === nb && g.tipo === 'Residencial' && g.t > t1 - 12), lo, hi) : null;
+  return { m2: fim?.m2 ?? null, n: fim?.n ?? 0, ate: ymLabel(t1), desde: ymLabel(t0), fx, fxTxt: faixaTxt(area >= 10 ? area : areaGet()),
            cagr: fim && ini && anos >= 3 ? ((fim.m2 / ini.m2) ** (1 / anos) - 1) * 100 : null };
 }
 
@@ -261,14 +264,17 @@ function calcInfoBairro() {
   if (!MED) $('cMedInfo').textContent = 'Medianas ainda carregando (ou medianas.json não encontrado).';
   else if (!nb) $('cMedInfo').textContent = 'Escolha um bairro para estimar o valor pela mediana do R$/m².';
   else if (!info?.m2) $('cMedInfo').textContent = `Poucas vendas residenciais recentes neste bairro (mín. ${MED_MIN}).`;
-  else $('cMedInfo').innerHTML = `Mediana residencial do bairro: <b>${brl(info.m2)}/m²</b> (${num(info.n)} vendas nos 12 meses até ${info.ate}).` +
+  else $('cMedInfo').innerHTML = (info.fx?.m2 != null
+      ? `Mediana residencial do bairro para <b>${info.fxTxt}</b>: <b>${brl(info.fx.m2)}/m²</b> (${num(info.fx.n)} vendas nos 12 meses até ${info.ate}); todas as metragens: ${brl(info.m2)}/m² (${num(info.n)} vendas).`
+      : `Mediana residencial do bairro: <b>${brl(info.m2)}/m²</b> (${num(info.n)} vendas nos 12 meses até ${info.ate})` +
+        (AREAS ? `; ${info.fx?.n ? 'só ' + num(info.fx.n) + ' venda' + (info.fx.n > 1 ? 's' : '') : 'nenhuma venda'} de ${info.fxTxt}, então a estimativa usa todas as metragens.` : '.')) +
     (info.cagr != null ? ` Variação histórica: <b>${f(info.cagr)}% a.a.</b> desde ${info.desde} (nominal).` : '');
   setSug('cValoriz', s.ipca, `sugestão: inflação (${f2(s.ipca)}%)` + (info?.cagr != null ? ` · histórico do bairro: ${f(info.cagr)}% a.a.` : ''));
 }
 function calcUsarMediana(quieto) {
   const info = calcBairroInfo($('cBairro').value);
   if (!info?.m2) { if (!quieto) calcInfoBairro(); return; }
-  $('cValor').value = formatMoeda(Math.round(info.m2 * cv('cArea') / 1000) * 1000); CALC_EDIT.delete('cValor'); CALC_EDIT.delete('cAluguel');
+  $('cValor').value = formatMoeda(Math.round((info.fx?.m2 ?? info.m2) * cv('cArea') / 1000) * 1000); CALC_EDIT.delete('cValor'); CALC_EDIT.delete('cAluguel');
   calcSugerir(); calcRodar();
 }
 
@@ -618,10 +624,12 @@ function renderCalc() {
   if (!CALC_OK) {
     calcMontar();
     if (S.lvl !== 'cidade' && S.nb) $('cBairro').value = S.nb;   // puxa o bairro selecionado no site
-    calcSugerir(); calcUsarMediana(true); cenRender();
+    calcSugerir(); calcUsarMediana(true); cenRender(); if (AREAS) renderCalc.fx = true;
   } else {
     if (S.lvl !== 'cidade' && S.nb && !$('cBairro').value) $('cBairro').value = S.nb;
     if (+$('cArea').value !== areaGet()) { $('cArea').value = areaGet(); calcUsarMediana(true); }   // área mudou na aba Tendência
+    else if (AREAS && !renderCalc.fx && !CALC_EDIT.has('cValor')) calcUsarMediana(true);              // faixas de metragem chegaram depois
+    if (AREAS) renderCalc.fx = true;
     calcSugerir();   // índices podem ter chegado depois
   }
   calcRodar();

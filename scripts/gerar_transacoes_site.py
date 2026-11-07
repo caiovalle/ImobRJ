@@ -5,6 +5,7 @@ Gera os arquivos da aba "Transações" do site a partir do itbi_limpo.csv (saíd
 Saída (pasta public/transacoes/):
     index.json        lista de bairros (nome, chave, arquivo, nº de transações, período)
     <bairro>.json     transações do bairro, em formato compacto (carregado só quando o usuário escolhe o bairro)
+E, no final, public/areas.json (gerar_areas.py): área e R$/m² de cada venda, para as faixas de metragem.
 
 O que entra: imóveis Residenciais e Comerciais com valor e área válidos e sem duplicata.
 O que NÃO entra: terrenos (Territorial), linhas com área/valor inválidos e duplicadas.
@@ -99,6 +100,9 @@ def main():
     for b, mb in grandes:
         print(f"  ATENÇÃO: {b} tem {mb:.1f} MB; pode ficar lento no celular (me avise para dividir por período).")
     print(f"Arquivos em {saida}")
+    # base de área × R$/m² para os filtros de faixa de metragem (public/areas.json)
+    from gerar_areas import gerar   # noqa: E402
+    gerar(saida, saida.parent / "areas.json")
 
 
 if __name__ == "__main__":
