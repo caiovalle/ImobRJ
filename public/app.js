@@ -809,8 +809,16 @@ function marcarAba() {
   document.querySelectorAll('.sub-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === TAB));
   document.querySelectorAll('.tab-btn').forEach(x => {
     const on = x.dataset.tab === TAB || (x.dataset.tab === 'overview' && PRECOS.includes(TAB)); x.classList.toggle('active', on);
-    if (on) { const nav = $('tabsNav'); nav.scrollTo({ left: x.offsetLeft - (nav.clientWidth - x.offsetWidth) / 2, behavior: 'smooth' }); }
   });
+  centralizarAba();
+}
+// no celular o menu de abas rola para o lado: deixa a aba ativa no meio da barra.
+// mede pela posição na tela (getBoundingClientRect), porque offsetLeft conta a partir do cabeçalho inteiro (com o logo) e fazia a barra "andar" demais
+function centralizarAba() {
+  const nav = $('tabsNav'), x = nav.querySelector('.tab-btn.active'); if (!x || nav.scrollWidth <= nav.clientWidth) return;
+  const n = nav.getBoundingClientRect(), b = x.getBoundingClientRect();
+  const alvo = Math.max(0, Math.min(nav.scrollWidth - nav.clientWidth, nav.scrollLeft + (b.left - n.left) - (n.width - b.width) / 2));
+  if (Math.abs(alvo - nav.scrollLeft) > 1) nav.scrollTo({ left: alvo, behavior: 'smooth' });
 }
 // leva o início do conteúdo para logo abaixo do menu fixo; espera o navegador redesenhar a aba nova antes de medir
 function irParaConteudo() {
